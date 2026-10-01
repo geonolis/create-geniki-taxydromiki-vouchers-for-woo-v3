@@ -1,0 +1,20 @@
+# IDE & Tooling
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archives & Temporary files
+*.zip
+*.tar.gz
+*.log
+__pycache__/
+*.pyc
+
+# Agents
+.agents/

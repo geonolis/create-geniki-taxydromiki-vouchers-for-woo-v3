@@ -1,0 +1,247 @@
+/**
+ * All of the CSS for your public-specific functionality should be
+ * included in this file.
+ */
+
+.result-tracking-message {
+    display: none;
+    border-top: 1px solid #e6e6e6;
+    padding: 10px;
+}
+@media (min-width: 640px) {
+    .result-tracking-message {
+        padding: 20px;
+    }
+}
+.result-tracking-message h2 {
+    color: #005aa4;
+    font-weight: bold;
+    text-align: center;
+    margin: 0 0 39px;
+}
+.result-tracking-message h2 .print-button {
+    background: none;
+    border: none;
+    height: 29px;
+    line-height: 29px;
+    float: right;
+}
+.result-tracking-message h2 .print-button, .result-tracking-message h2 .print-button:focus {
+    outline: none;
+}
+.result-tracking-message .tracking-result > h3 {
+    background: #f2f2f2;
+    line-height: 50px;
+    height: 50px;
+    font-size: 14px;
+    color: #005aa4;
+    font-weight: normal;
+    padding: 0 20px;
+    cursor: pointer;
+    position: relative;
+    z-index: 0;
+}
+.result-tracking-message .tracking-result > h3 span.arrow {
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 13px 21.5px 0 21.5px;
+    border-color: #005aa4 transparent transparent transparent;
+    position: absolute;
+    z-index: 1;
+    bottom: -13px;
+    left: 15px;
+    display: none;
+}
+.result-tracking-message .tracking-result > h3:before {
+    content: "";
+    display: inline-block;
+    background-image: url('../../images/icons.png');
+    background-position: 0 -122px;
+    background-repeat: no-repeat;
+    height: 32px;
+    width: 30px;
+    margin: 0 20px 0 0;
+    vertical-align: middle;
+}
+@media (-webkit-min-device-pixel-ratio: 2), (-o-min-device-pixel-ratio: 3 / 2), (min--moz-device-pixel-ratio: 2), (min-device-pixel-ratio: 2), (min-resolution: 144dppx) {
+    .result-tracking-message .tracking-result > h3:before {
+        background-image: url('../../images/icons-2x.png');
+        background-position: 0 -112px;
+        background-size: 78px 144px;
+    }
+}
+.result-tracking-message .tracking-result > h3:after {
+    margin: 21px 0 0;
+    display: -moz-inline-box;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+    text-shadow: none;
+    -webkit-text-shadow: none;
+    font-family: "fontcustom";
+    font-style: normal;
+    font-weight: normal;
+    font-variant: normal;
+    line-height: 1;
+    text-decoration: inherit;
+    text-rendering: optimizeLegibility;
+    text-transform: none;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-smoothing: antialiased;
+    font-smoothing: antialiased;
+    backface-visibility: hidden;
+    content: "";
+    font-size: 13px;
+    vertical-align: middle;
+    float: right;
+    width: 13px;
+    height: 8px;
+}
+.result-tracking-message .tracking-result.active > h3 {
+    background: #005aa4;
+    color: white;
+}
+.result-tracking-message .tracking-result.active > h3 span.arrow {
+    display: block;
+}
+.result-tracking-message .tracking-result.active > h3:before {
+    background-image: url('../../images/icons.png');
+    background-position: 0 -90px;
+    background-repeat: no-repeat;
+    height: 32px;
+    width: 30px;
+}
+@media (-webkit-min-device-pixel-ratio: 2), (-o-min-device-pixel-ratio: 3 / 2), (min--moz-device-pixel-ratio: 2), (min-device-pixel-ratio: 2), (min-resolution: 144dppx) {
+    .result-tracking-message .tracking-result.active > h3:before {
+        background-image: url('../../images/icons-2x.png');
+        background-position: 0 -80px;
+        background-size: 78px 144px;
+    }
+}
+.result-tracking-message .tracking-result.active > h3:after {
+    color: white;
+    -moz-transform: scaleY(-1);
+    -ms-transform: scaleY(-1);
+    -webkit-transform: scaleY(-1);
+    transform: scaleY(-1);
+}
+.result-tracking-message .tracking-result.empty .tracking-result-content {
+    background: none;
+    padding: 0;
+    text-align: center;
+}
+.result-tracking-message .tracking-result.empty .tracking-result-content:before, .result-tracking-message .tracking-result.empty .tracking-result-content:after {
+    display: none;
+}
+.result-tracking-message .tracking-result-content {
+    position: relative;
+    z-index: 0;
+}
+@media (min-width: 640px) {
+    .result-tracking-message .tracking-result-content {
+        padding: 0 0 0 120px;
+        background: url('../../images/track-route.png') 25px 20px repeat-y;
+    }
+    .result-tracking-message .tracking-result-content:before {
+        content: "";
+        background: #fff;
+        width: 50px;
+        height: 20px;
+        position: absolute;
+        z-index: 1;
+        bottom: 0;
+        left: 0;
+    }
+    .result-tracking-message .tracking-result-content:after {
+        content: "";
+        background: #fff url('../../images/logo-small.svg') no-repeat 0 24px;
+        background-size: 100% auto;
+        width: 70px;
+        height: 76px;
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        left: 0;
+    }
+}
+
+.tracking-checkpoint {
+    *zoom: 1;
+    background: #fafafa;
+    padding: 10px;
+    color: #333;
+    position: relative;
+    z-index: 0;
+    margin: 0 0 10px;
+    font-size: 14px;
+}
+.tracking-checkpoint:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+@media (min-width: 640px) {
+    .tracking-checkpoint {
+        margin: 0 0 20px;
+        height: 80.5px;
+    }
+    .tracking-checkpoint:before {
+        right: 100%;
+        top: 0;
+        border: solid transparent;
+        content: "";
+        height: 0;
+        width: 0;
+        position: absolute;
+        pointer-events: none;
+        border-color: rgba(250, 250, 250, 0);
+        border-right-color: #fafafa;
+        border-width: 50px 30px 50px 0;
+    }
+}
+.tracking-checkpoint.last {
+    margin: 0;
+}
+.tracking-checkpoint strong {
+    display: block;
+    color: #005aa4;
+    font-size: 14px;
+}
+@media (min-width: 640px) {
+    .tracking-checkpoint strong {
+        font-size: 12px;
+    }
+}
+.tracking-checkpoint .checkpoint-status {
+    width: 60%;
+    float: left;
+    margin: 0 0 10px;
+}
+.tracking-checkpoint .checkpoint-location {
+    width: 40%;
+    float: right;
+    margin: 0 0 10px;
+}
+.tracking-checkpoint .checkpoint-date {
+    clear: both;
+    width: 60%;
+    float: left;
+}
+.tracking-checkpoint .checkpoint-time {
+    width: 40%;
+    float: left;
+}
+.tracking-checkpoint.tracking-delivery {
+    background: #005AA5;
+    color: #fff;
+}
+@media (min-width: 640px) {
+    .tracking-checkpoint.tracking-delivery:before {
+        border-right-color: #005AA5;
+    }
+}
+.tracking-checkpoint.tracking-delivery strong {
+    color: white;
+}
+
