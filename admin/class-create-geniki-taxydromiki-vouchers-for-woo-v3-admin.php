@@ -818,4 +818,13 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 		) );
 	}
 
+	/**
+	 * Callback for WP-Cron IMAP check event.
+	 */
+	public function run_imap_cod_cron() {
+		if ( 'imap' === GT_COD_Importer::get_auto_method() ) {
+			GT_COD_Importer::fetch_and_process_imap_emails();
+		}
+	}
+
 } //class

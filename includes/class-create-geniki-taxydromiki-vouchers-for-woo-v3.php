@@ -211,6 +211,9 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3 {
 
 		// Register REST API route for automated COD email webhook
 		$this->loader->add_action( 'rest_api_init', $plugin_admin, 'register_rest_routes' );
+
+		// Register IMAP COD cron check
+		$this->loader->add_action( 'gtvfw_cod_imap_cron_check', $plugin_admin, 'run_imap_cod_cron' );
 	}
 
 	/**

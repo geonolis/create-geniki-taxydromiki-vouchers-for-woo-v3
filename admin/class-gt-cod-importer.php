@@ -92,6 +92,342 @@ class GT_COD_Importer {
 	}
 
 	/**
+	 * Retrieve active automated ingestion method ('webhook', 'imap', or 'disabled').
+	 *
+	 * @return string
+	 */
+	public static function get_auto_method(): string {
+		return get_option( 'gtvfw_cod_auto_method', 'webhook' );
+	}
+
+	/**
+	 * Retrieve IMAP server settings.
+	 *
+	 * @return array
+	 */
+	public static function get_imap_settings(): array {
+		$defaults = array(
+			'host'          => 'imap.gmail.com',
+			'port'          => 993,
+			'encryption'    => 'ssl',
+			'username'      => '',
+			'password'      => '',
+			'folder'        => 'INBOX',
+			'sender_filter' => 'cod@taxydromiki.gr',
+			'schedule'      => 'hourly',
+		);
+		$saved = get_option( 'gtvfw_cod_imap_settings', array() );
+		return wp_parse_args( is_array( $saved ) ? $saved : array(), $defaults );
+	}
+
+	/**
+	 * Save IMAP server settings and sync cron schedule.
+	 *
+	 * @param array $settings
+	 * @return void
+	 */
+	public static function save_imap_settings( array $settings ): void {
+		update_option( 'gtvfw_cod_imap_settings', $settings );
+		self::sync_cron_schedule( $settings );
+	}
+
+	/**
+	 * Synchronize WP-Cron schedule for IMAP checking.
+	 *
+	 * @param array|null $settings
+	 * @return void
+	 */
+	public static function sync_cron_schedule( array $settings = null ): void {
+		if ( null === $settings ) {
+			$settings = self::get_imap_settings();
+		}
+		$method   = self::get_auto_method();
+		$schedule = ! empty( $settings['schedule'] ) ? $settings['schedule'] : 'hourly';
+		$hook     = 'gtvfw_cod_imap_cron_check';
+
+		$timestamp = wp_next_scheduled( $hook );
+
+		if ( 'imap' !== $method || 'manual' === $schedule || empty( $settings['username'] ) || empty( $settings['password'] ) ) {
+			if ( $timestamp ) {
+				wp_unschedule_event( $timestamp, $hook );
+			}
+			return;
+		}
+
+		if ( $timestamp ) {
+			$current_schedule = wp_get_schedule( $hook );
+			if ( $current_schedule === $schedule ) {
+				return;
+			}
+			wp_unschedule_event( $timestamp, $hook );
+		}
+
+		wp_schedule_event( time() + 60, $schedule, $hook );
+	}
+
+	/**
+	 * Formats IMAP connection string for imap_open.
+	 *
+	 * @param array $settings
+	 * @return string
+	 */
+	public static function get_imap_mailbox_string( array $settings ): string {
+		$host       = ! empty( $settings['host'] ) ? trim( $settings['host'] ) : 'imap.gmail.com';
+		$port       = ! empty( $settings['port'] ) ? intval( $settings['port'] ) : 993;
+		$encryption = ! empty( $settings['encryption'] ) ? strtolower( trim( $settings['encryption'] ) ) : 'ssl';
+		$folder     = ! empty( $settings['folder'] ) ? trim( $settings['folder'] ) : 'INBOX';
+
+		$flags = '/imap';
+		if ( 'ssl' === $encryption ) {
+			$flags .= '/ssl/novalidate-cert';
+		} elseif ( 'tls' === $encryption ) {
+			$flags .= '/tls/novalidate-cert';
+		} else {
+			$flags .= '/notls';
+		}
+
+		return '{' . $host . ':' . $port . $flags . '}' . $folder;
+	}
+
+	/**
+	 * Tests IMAP connection with provided or saved settings.
+	 *
+	 * @param array|null $settings
+	 * @return array|WP_Error
+	 */
+	public static function test_imap_connection( array $settings = null ) {
+		if ( ! function_exists( 'imap_open' ) ) {
+			return new WP_Error( 'gt_no_imap_extension', __( 'Η επέκταση PHP IMAP δεν είναι ενεργοποιημένη στο διακομιστή σας.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+		}
+
+		if ( null === $settings ) {
+			$settings = self::get_imap_settings();
+		}
+
+		if ( empty( $settings['host'] ) || empty( $settings['username'] ) || empty( $settings['password'] ) ) {
+			return new WP_Error( 'gt_missing_credentials', __( 'Παρακαλούμε συμπληρώστε όλα τα απαιτούμενα στοιχεία IMAP (Διακομιστής, Όνομα χρήστη / Email, Κωδικός πρόσβασης).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+		}
+
+		$mailbox = self::get_imap_mailbox_string( $settings );
+
+		imap_timeout( IMAP_OPENTIMEOUT, 10 );
+
+		$inbox = @imap_open( $mailbox, $settings['username'], $settings['password'], OP_READONLY, 1 );
+
+		if ( false === $inbox ) {
+			$errors     = imap_errors();
+			$last_error = imap_last_error();
+			$msg        = $last_error ? $last_error : ( ! empty( $errors ) ? implode( ', ', $errors ) : __( 'Αποτυχία σύνδεσης στο διακομιστή IMAP.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+			return new WP_Error( 'gt_imap_connect_failed', sprintf( __( 'Σφάλμα σύνδεσης IMAP: %s', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), $msg ) );
+		}
+
+		$check     = @imap_check( $inbox );
+		$msg_count = $check ? $check->Nmsgs : 0;
+
+		@imap_close( $inbox );
+
+		return array(
+			'success'  => true,
+			'messages' => $msg_count,
+			'message'  => sprintf( __( 'Επιτυχής σύνδεση στο γραμματοκιβώτιο (%1$s)! Βρέθηκαν συνολικά %2$d μηνύματα.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), esc_html( $settings['folder'] ), (int) $msg_count ),
+		);
+	}
+
+	/**
+	 * Recursively extracts valid COD attachments from an IMAP email structure.
+	 *
+	 * @param resource $inbox IMAP stream.
+	 * @param int      $msg_num Message sequence number.
+	 * @param object   $structure Structure object from imap_fetchstructure.
+	 * @param string   $part_prefix Prefix for nested parts.
+	 * @return array List of attachments with 'filename' and 'content'.
+	 */
+	public static function extract_imap_attachments( $inbox, int $msg_num, $structure, string $part_prefix = '' ): array {
+		$attachments = array();
+
+		if ( empty( $structure->parts ) ) {
+			return $attachments;
+		}
+
+		foreach ( $structure->parts as $idx => $part ) {
+			$part_number = empty( $part_prefix ) ? (string) ( $idx + 1 ) : $part_prefix . '.' . ( $idx + 1 );
+
+			if ( ! empty( $part->parts ) ) {
+				$sub = self::extract_imap_attachments( $inbox, $msg_num, $part, $part_number );
+				$attachments = array_merge( $attachments, $sub );
+				continue;
+			}
+
+			$filename = '';
+			if ( ! empty( $part->dparameters ) ) {
+				foreach ( $part->dparameters as $param ) {
+					if ( strtolower( $param->attribute ) === 'filename' ) {
+						$filename = $param->value;
+						break;
+					}
+				}
+			}
+			if ( empty( $filename ) && ! empty( $part->parameters ) ) {
+				foreach ( $part->parameters as $param ) {
+					if ( strtolower( $param->attribute ) === 'name' ) {
+						$filename = $param->value;
+						break;
+					}
+				}
+			}
+
+			if ( empty( $filename ) ) {
+				continue;
+			}
+
+			if ( function_exists( 'iconv_mime_decode' ) ) {
+				$decoded_name = @iconv_mime_decode( $filename, ICONV_MIME_DECODE_CONTINUE_ON_ERROR, 'UTF-8' );
+				if ( ! empty( $decoded_name ) ) {
+					$filename = $decoded_name;
+				}
+			} elseif ( function_exists( 'imap_utf8' ) ) {
+				$filename = imap_utf8( $filename );
+			}
+
+			$clean_name = sanitize_file_name( $filename );
+			$lower_name = mb_strtolower( $filename, 'UTF-8' );
+
+			// Strictly skip invoices (ΤΠΥ)
+			if ( strpos( $lower_name, 'τπυ' ) !== false || strpos( $lower_name, 'tpy' ) !== false || strpos( $lower_name, 'timolog' ) !== false ) {
+				continue;
+			}
+
+			if ( ! preg_match( '/\.(csv|txt|tsv)$/i', $clean_name ) ) {
+				continue;
+			}
+
+			$data = @imap_fetchbody( $inbox, $msg_num, $part_number );
+
+			if ( 3 === $part->encoding ) {
+				$data = base64_decode( $data );
+			} elseif ( 4 === $part->encoding ) {
+				$data = quoted_printable_decode( $data );
+			}
+
+			$attachments[] = array(
+				'filename' => $clean_name,
+				'content'  => $data,
+			);
+		}
+
+		return $attachments;
+	}
+
+	/**
+	 * Connects to IMAP mailbox, fetches unread COD settlement emails, and processes them.
+	 *
+	 * @param array|null $settings
+	 * @return array|WP_Error
+	 */
+	public static function fetch_and_process_imap_emails( array $settings = null ) {
+		if ( ! function_exists( 'imap_open' ) ) {
+			return new WP_Error( 'gt_no_imap_extension', __( 'Η επέκταση PHP IMAP δεν είναι ενεργοποιημένη.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+		}
+
+		if ( null === $settings ) {
+			$settings = self::get_imap_settings();
+		}
+
+		if ( empty( $settings['host'] ) || empty( $settings['username'] ) || empty( $settings['password'] ) ) {
+			return new WP_Error( 'gt_missing_credentials', __( 'Ελλιπή στοιχεία διακομιστή IMAP.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+		}
+
+		$mailbox = self::get_imap_mailbox_string( $settings );
+		imap_timeout( IMAP_OPENTIMEOUT, 15 );
+		imap_timeout( IMAP_READTIMEOUT, 30 );
+
+		$inbox = @imap_open( $mailbox, $settings['username'], $settings['password'] );
+
+		if ( false === $inbox ) {
+			$errors     = imap_errors();
+			$last_error = imap_last_error();
+			$msg        = $last_error ? $last_error : ( ! empty( $errors ) ? implode( ', ', $errors ) : __( 'Αποτυχία σύνδεσης στο διακομιστή IMAP.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+			return new WP_Error( 'gt_imap_connect_failed', $msg );
+		}
+
+		$sender_filter = ! empty( $settings['sender_filter'] ) ? trim( $settings['sender_filter'] ) : 'cod@taxydromiki.gr';
+
+		// Find unseen messages
+		$emails = @imap_search( $inbox, 'UNSEEN' );
+
+		$processed_messages = 0;
+		$processed_files    = 0;
+		$updated_orders     = 0;
+		$total_amount       = 0.0;
+		$errors_list        = array();
+
+		if ( ! empty( $emails ) ) {
+			foreach ( $emails as $msg_num ) {
+				$header = @imap_headerinfo( $inbox, $msg_num );
+				if ( ! $header ) {
+					continue;
+				}
+
+				$from_email = '';
+				if ( ! empty( $header->from[0] ) ) {
+					$from_email = strtolower( $header->from[0]->mailbox . '@' . $header->from[0]->host );
+				}
+
+				// Strictly ignore invoices from apostoli_timologion
+				if ( strpos( $from_email, 'apostoli_timologion' ) !== false ) {
+					continue;
+				}
+
+				// Filter sender
+				if ( ! empty( $sender_filter ) && strpos( $from_email, strtolower( $sender_filter ) ) === false ) {
+					continue;
+				}
+
+				$structure   = @imap_fetchstructure( $inbox, $msg_num );
+				$attachments = self::extract_imap_attachments( $inbox, $msg_num, $structure );
+
+				if ( empty( $attachments ) ) {
+					continue;
+				}
+
+				$msg_file_success = false;
+
+				foreach ( $attachments as $att ) {
+					$res = self::process_raw_content( $att['content'], $att['filename'] );
+					if ( is_wp_error( $res ) ) {
+						$errors_list[] = sprintf( '[%s] %s', $att['filename'], $res->get_error_message() );
+					} else {
+						$msg_file_success = true;
+						$processed_files++;
+						$updated_orders += $res['updated_orders'];
+						$total_amount   += (float) $res['total_amount'];
+					}
+				}
+
+				if ( $msg_file_success ) {
+					$processed_messages++;
+					@imap_setflag_full( $inbox, (string) $msg_num, "\\Seen" );
+				}
+			}
+		}
+
+		@imap_close( $inbox, CL_EXPUNGE );
+
+		$summary = array(
+			'timestamp'          => current_time( 'mysql' ),
+			'messages_processed' => $processed_messages,
+			'files_processed'    => $processed_files,
+			'updated_orders'     => $updated_orders,
+			'total_amount'       => $total_amount,
+			'errors'             => $errors_list,
+		);
+
+		update_option( 'gtvfw_cod_imap_last_log', $summary );
+
+		return $summary;
+	}
+
+	/**
 	 * Retrieve or generate the webhook secret key for automated imports.
 	 *
 	 * @return string Secret key string.
