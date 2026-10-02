@@ -164,11 +164,11 @@ $imap_next_cron     = wp_next_scheduled( 'gtvfw_cod_imap_cron_check' );
 			</form> 
 		</div>
 
-		<!-- BLOCK 2: Unified Webhook & Secret Key -->
+		<!-- BLOCK 2: Automated Email Ingestion -->
 		<div class="card" style="max-width: 100%; width: 100%; padding: 20px 25px; margin: 0; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); box-sizing: border-box;">
 			<h2 style="margin-top: 0; color: #135e96; font-size: 1.3em;">
-				<span class="dashicons dashicons-rest-api" style="font-size: 24px; vertical-align: middle; margin-right: 5px;"></span>
-				<?php esc_html_e( '2. Ενιαίο Webhook & Secret Key', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+				<span class="dashicons dashicons-email-alt" style="font-size: 24px; vertical-align: middle; margin-right: 5px;"></span>
+				<?php esc_html_e( '2. Αυτοματοποίηση Λήψης Email (Google Apps Script / Webhook / IMAP)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 			</h2>
 
 			<p style="font-size: 13px; line-height: 1.6; color: #555;">
@@ -258,112 +258,33 @@ $imap_next_cron     = wp_next_scheduled( 'gtvfw_cod_imap_cron_check' );
 							<?php endif; ?>
 						</div>
 					</div>
-				</div>
-
-				<!-- IMAP Settings Panel -->
-				<div id="gt_hub_panel_imap" style="<?php echo 'imap' === $auto_method ? '' : 'display:none;'; ?>">
+					<!-- Google Apps Script Container -->
 					<div style="background: #fdfdfd; border: 1px solid #ccd0d4; padding: 18px 22px; border-radius: 4px; margin: 15px 0; box-sizing: border-box;">
-						<h3 style="margin-top: 0; color: #23282d; font-size: 14px;">
-							<span class="dashicons dashicons-email" style="vertical-align: middle;"></span>
-							<?php esc_html_e( 'Στοιχεία Σύνδεσης IMAP Mail Server', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+						<h3 style="margin-top: 0; color: #005aa4; font-size: 14px;">
+							<span class="dashicons dashicons-google" style="vertical-align: middle; margin-right: 4px;"></span>
+							<?php esc_html_e( 'Ενιαίο Google Apps Script (Ένα copy-paste για όλα)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 						</h3>
 
-						<table class="form-table" style="margin-top: 0; width: 100%; table-layout: auto;">
-							<tbody>
-								<tr>
-									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_host"><?php esc_html_e( 'Διακομιστής (Host):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
-									<td><input type="text" id="imap_host" name="imap_host" value="<?php echo esc_attr( $imap_settings['host'] ); ?>" class="regular-text" style="width: 100%; max-width: 440px;" placeholder="imap.gmail.com" /></td>
-								</tr>
-								<tr>
-									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_port"><?php esc_html_e( 'Θύρα (Port) & Κρυπτογράφηση:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
-									<td>
-										<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-											<input type="number" id="imap_port" name="imap_port" value="<?php echo esc_attr( $imap_settings['port'] ); ?>" style="width: 85px;" />
-											<select name="imap_encryption" id="imap_encryption" style="min-width: 160px;">
-												<option value="ssl" <?php selected( $imap_settings['encryption'], 'ssl' ); ?>>SSL / TLS (993)</option>
-												<option value="tls" <?php selected( $imap_settings['encryption'], 'tls' ); ?>>STARTTLS (143)</option>
-												<option value="none" <?php selected( $imap_settings['encryption'], 'none' ); ?>>None (143)</option>
-											</select>
-										</div>
-									</td>
-								</tr>
-								<tr>
-									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_username"><?php esc_html_e( 'Όνομα Χρήστη / Email:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
-									<td><input type="text" id="imap_username" name="imap_username" value="<?php echo esc_attr( $imap_settings['username'] ); ?>" class="regular-text" style="width: 100%; max-width: 440px;" placeholder="info@example.gr" /></td>
-								</tr>
-								<tr>
-									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_password"><?php esc_html_e( 'Κωδικός Πρόσβασης:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
-									<td>
-										<input type="password" id="imap_password" name="imap_password" value="<?php echo esc_attr( $imap_settings['password'] ); ?>" class="regular-text" style="width: 100%; max-width: 440px;" />
-										<p class="description"><?php esc_html_e( 'Για λογαριασμούς Gmail με 2FA, χρησιμοποιήστε App Password.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></p>
-									</td>
-								</tr>
-								<tr>
-									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_folder"><?php esc_html_e( 'Φάκελος (Folder):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
-									<td><input type="text" id="imap_folder" name="imap_folder" value="<?php echo esc_attr( $imap_settings['folder'] ); ?>" class="regular-text" style="width: 100%; max-width: 440px;" placeholder="INBOX" /></td>
-								</tr>
-								<tr>
-									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_schedule"><?php esc_html_e( 'Συχνότητα Ελέγχου (WP-Cron):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
-									<td>
-										<select name="imap_schedule" id="imap_schedule" style="min-width: 220px;">
-											<option value="hourly" <?php selected( $imap_settings['schedule'], 'hourly' ); ?>><?php esc_html_e( 'Κάθε 1 Ώρα', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
-											<option value="twicedaily" <?php selected( $imap_settings['schedule'], 'twicedaily' ); ?>><?php esc_html_e( 'Δύο Φορές την Ημέρα (Κάθε 12 Ώρες)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
-											<option value="daily" <?php selected( $imap_settings['schedule'], 'daily' ); ?>><?php esc_html_e( 'Μία Φορά την Ημέρα (Κάθε 24 Ώρες)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
-										</select>
-									</td>
-								</tr>
-							</tbody>
-						</table>
+						<p style="font-size: 13px; line-height: 1.5; color: #555; margin-bottom: 12px;">
+							<?php esc_html_e( 'Χρησιμοποιήστε τον παρακάτω ενιαίο κώδικα στο Google Apps Script (script.google.com). Το script διαχειρίζεται αυτόματα και τους δύο τύπους email, χρησιμοποιώντας ξεχωριστές ετικέτες (labels) ώστε κάθε παραγγελία να επεξεργάζεται αξιόπιστα 2 φορές (μία για εξόφληση Α/Κ και μία για έλεγχο τιμολογίου):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+						</p>
 
-						<div style="margin-top: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-							<button type="submit" name="gt_cod_test_imap" class="button button-secondary">
-								<span class="dashicons dashicons-update" style="vertical-align: middle;"></span>
-								<?php esc_html_e( 'Δοκιμή Σύνδεσης IMAP', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-							</button>
-							<button type="submit" name="gt_cod_check_imap_now" class="button button-secondary">
-								<span class="dashicons dashicons-download" style="vertical-align: middle;"></span>
-								<?php esc_html_e( 'Άμεσος Έλεγχος & Συγχρονισμός Τώρα', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-							</button>
-						</div>
-					</div>
-				</div>
+						<ul style="margin: 0 0 15px 20px; font-size: 12px; list-style-type: disc; color: #444;">
+							<li><strong><code>from:cod@taxydromiki.gr</code></strong> &rarr; <?php esc_html_e( 'Ετικέτα:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?> <span style="background: #e7f5ea; color: #155724; padding: 2px 6px; border-radius: 3px; font-weight: 600;">GT-COD-Processed</span></li>
+							<li><strong><code>from:apostoli_timologion@taxydromiki.gr</code></strong> &rarr; <?php esc_html_e( 'Ετικέτα:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?> <span style="background: #e8f4fd; color: #005aa4; padding: 2px 6px; border-radius: 3px; font-weight: 600;">GT-Invoice-Processed</span></li>
+						</ul>
 
-				<div style="margin-top: 15px;">
-					<button type="submit" name="gt_cod_save_auto_settings" class="button button-primary button-large">
-						<span class="dashicons dashicons-saved" style="vertical-align: middle;"></span>
-						<?php esc_html_e( 'Αποθήκευση Ρυθμίσεων Αυτοματισμού', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-					</button>
-				</div>
-			</form>
-		</div>
+						<div style="background: #fff; border: 1px solid #ccd0d4; padding: 15px; border-radius: 4px;">
+							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+								<strong style="font-size: 12px; color: #333;"><?php esc_html_e( 'Κώδικας Code.gs (Έτοιμος με το Webhook URL & Secret Key σας):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></strong>
+								<button type="button" class="button button-small" onclick="navigator.clipboard.writeText(document.getElementById('gt_unified_gas_code').value); alert('Ο ενιαίος κώδικας αντιγράφηκε επιτυχώς!');">
+									<span class="dashicons dashicons-admin-page" style="vertical-align: middle;"></span>
+									<?php esc_html_e( 'Αντιγραφή Κώδικα', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+								</button>
+							</div>
 
-		<!-- BLOCK 3: Unified Google Apps Script -->
-		<div class="card" style="max-width: 100%; width: 100%; padding: 20px 25px; margin: 0; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); box-sizing: border-box;">
-			<h2 style="margin-top: 0; color: #005aa4; font-size: 1.3em;">
-				<span class="dashicons dashicons-google" style="font-size: 24px; vertical-align: middle; margin-right: 5px;"></span>
-				<?php esc_html_e( '3. Ενιαίο Google Apps Script (Ένα copy-paste για όλα)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-			</h2>
-
-			<p style="font-size: 13px; line-height: 1.6; color: #555;">
-				<?php esc_html_e( 'Χρησιμοποιήστε τον παρακάτω ενιαίο κώδικα στο Google Apps Script (script.google.com). Το script διαχειρίζεται αυτόματα και τους δύο τύπους email, χρησιμοποιώντας ξεχωριστές ετικέτες (labels) ώστε κάθε παραγγελία να επεξεργάζεται αξιόπιστα 2 φορές (μία για εξόφληση Α/Κ και μία για έλεγχο τιμολογίου):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-			</p>
-
-			<ul style="margin: 0 0 15px 20px; font-size: 13px; list-style-type: disc; color: #444;">
-				<li><strong><code>from:cod@taxydromiki.gr</code></strong> &rarr; <?php esc_html_e( 'Ετικέτα:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?> <span style="background: #e7f5ea; color: #155724; padding: 2px 6px; border-radius: 3px; font-weight: 600;">GT-COD-Processed</span></li>
-				<li><strong><code>from:apostoli_timologion@taxydromiki.gr</code></strong> &rarr; <?php esc_html_e( 'Ετικέτα:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?> <span style="background: #e8f4fd; color: #005aa4; padding: 2px 6px; border-radius: 3px; font-weight: 600;">GT-Invoice-Processed</span></li>
-			</ul>
-
-			<div style="background: #fdfdfd; border: 1px solid #ccd0d4; padding: 15px; border-radius: 4px;">
-				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-					<strong style="font-size: 12px; color: #333;"><?php esc_html_e( 'Κώδικας Code.gs (Έτοιμος με το Webhook URL & Secret Key σας):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></strong>
-					<button type="button" class="button button-small" onclick="navigator.clipboard.writeText(document.getElementById('gt_unified_gas_code').value); alert('Ο ενιαίος κώδικας αντιγράφηκε επιτυχώς!');">
-						<span class="dashicons dashicons-admin-page" style="vertical-align: middle;"></span>
-						<?php esc_html_e( 'Αντιγραφή Κώδικα', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-					</button>
-				</div>
-
-				<?php
-				$unified_gas_code = '/**
+							<?php
+							$unified_gas_code = '/**
  * Ενιαίος Αυτοματισμός Γενικής Ταχυδρομικής για WooCommerce
  * Διαχειρίζεται:
  * 1. Αντικαταβολές: cod@taxydromiki.gr -> Ετικέτα: GT-COD-Processed
@@ -452,22 +373,101 @@ function processEmailQuery(query, labelName, typeName) {
     }
   }
 }';
-				?>
+							?>
 
-				<textarea id="gt_unified_gas_code" readonly rows="12" style="width: 100%; font-family: monospace; font-size: 11px; background: #f0f0f1; border-radius: 4px; padding: 10px;"><?php echo esc_textarea( $unified_gas_code ); ?></textarea>
+							<textarea id="gt_unified_gas_code" readonly rows="12" style="width: 100%; font-family: monospace; font-size: 11px; background: #f0f0f1; border-radius: 4px; padding: 10px;"><?php echo esc_textarea( $unified_gas_code ); ?></textarea>
 
-				<div style="margin-top: 12px; font-size: 12px; line-height: 1.5; color: #666;">
-					<strong><?php esc_html_e( 'Οδηγίες εγκατάστασης στο Google Apps Script (1 λεπτό):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></strong>
-					<ol style="margin: 5px 0 0 18px;">
-						<li><?php echo sprintf( __( 'Ανοίξτε το <a href="%s" target="_blank">Google Apps Script (script.google.com)</a> με το Google λογαριασμό του καταστήματος.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), 'https://script.google.com/' ); ?></li>
-						<li><?php esc_html_e( 'Δημιουργήστε ένα "Νέο έργο" (New Project) με όνομα "Geniki Taxydromiki Sync".', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
-						<li><?php esc_html_e( 'Επικολλήστε τον παραπάνω κώδικα στο αρχείο Code.gs και πατήστε Αποθήκευση (Ctrl+S).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
-						<li><?php esc_html_e( 'Κάντε κλικ στο εικονίδιο Triggers (Ρολόι αριστερά) &rarr; "Προσθήκη Trigger" &rarr; Επιλέξτε συνάρτηση "syncAllGeniki" &rarr; Επιλέξτε "Time-driven" (ανά 1 ώρα). Αυτό ήταν!', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
-					</ol>
+							<div style="margin-top: 12px; font-size: 12px; line-height: 1.5; color: #666;">
+								<strong><?php esc_html_e( 'Οδηγίες εγκατάστασης στο Google Apps Script (1 λεπτό):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></strong>
+								<ol style="margin: 5px 0 0 18px;">
+									<li><?php echo sprintf( __( 'Ανοίξτε το <a href="%s" target="_blank">Google Apps Script (script.google.com)</a> με το Google λογαριασμό του καταστήματος.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), 'https://script.google.com/' ); ?></li>
+									<li><?php esc_html_e( 'Δημιουργήστε ένα "Νέο έργο" (New Project) με όνομα "Geniki Taxydromiki Sync".', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
+									<li><?php esc_html_e( 'Επικολλήστε τον παραπάνω κώδικα στο αρχείο Code.gs και πατήστε Αποθήκευση (Ctrl+S).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
+									<li><?php esc_html_e( 'Κάντε κλικ στο εικονίδιο Triggers (Ρολόι αριστερά) &rarr; "Προσθήκη Trigger" &rarr; Επιλέξτε συνάρτηση "syncAllGeniki" &rarr; Επιλέξτε "Time-driven" (ανά 1 ώρα). Αυτό ήταν!', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
+								</ol>
+							</div>
+						</div>
+					</div>
 				</div>
-			</div>
+
+				<!-- IMAP Settings Panel -->
+				<div id="gt_hub_panel_imap" style="<?php echo 'imap' === $auto_method ? '' : 'display:none;'; ?>">
+					<div style="background: #fdfdfd; border: 1px solid #ccd0d4; padding: 18px 22px; border-radius: 4px; margin: 15px 0; box-sizing: border-box;">
+						<h3 style="margin-top: 0; color: #23282d; font-size: 14px;">
+							<span class="dashicons dashicons-email" style="vertical-align: middle;"></span>
+							<?php esc_html_e( 'Στοιχεία Σύνδεσης IMAP Mail Server', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+						</h3>
+
+						<table class="form-table" style="margin-top: 0; width: 100%; table-layout: auto;">
+							<tbody>
+								<tr>
+									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_host"><?php esc_html_e( 'Διακομιστής (Host):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
+									<td><input type="text" id="imap_host" name="imap_host" value="<?php echo esc_attr( $imap_settings['host'] ); ?>" class="regular-text" style="width: 100%; max-width: 440px;" placeholder="imap.gmail.com" /></td>
+								</tr>
+								<tr>
+									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_port"><?php esc_html_e( 'Θύρα (Port) & Κρυπτογράφηση:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
+									<td>
+										<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+											<input type="number" id="imap_port" name="imap_port" value="<?php echo esc_attr( $imap_settings['port'] ); ?>" style="width: 85px;" />
+											<select name="imap_encryption" id="imap_encryption" style="min-width: 160px;">
+												<option value="ssl" <?php selected( $imap_settings['encryption'], 'ssl' ); ?>>SSL / TLS (993)</option>
+												<option value="tls" <?php selected( $imap_settings['encryption'], 'tls' ); ?>>STARTTLS (143)</option>
+												<option value="none" <?php selected( $imap_settings['encryption'], 'none' ); ?>>None (143)</option>
+											</select>
+										</div>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_username"><?php esc_html_e( 'Όνομα Χρήστη / Email:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
+									<td><input type="text" id="imap_username" name="imap_username" value="<?php echo esc_attr( $imap_settings['username'] ); ?>" class="regular-text" style="width: 100%; max-width: 440px;" placeholder="info@example.gr" /></td>
+								</tr>
+								<tr>
+									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_password"><?php esc_html_e( 'Κωδικός Πρόσβασης:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
+									<td>
+										<input type="password" id="imap_password" name="imap_password" value="<?php echo esc_attr( $imap_settings['password'] ); ?>" class="regular-text" style="width: 100%; max-width: 440px;" />
+										<p class="description"><?php esc_html_e( 'Για λογαριασμούς Gmail με 2FA, χρησιμοποιήστε App Password.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></p>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_folder"><?php esc_html_e( 'Φάκελος (Folder):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
+									<td><input type="text" id="imap_folder" name="imap_folder" value="<?php echo esc_attr( $imap_settings['folder'] ); ?>" class="regular-text" style="width: 100%; max-width: 440px;" placeholder="INBOX" /></td>
+								</tr>
+								<tr>
+									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_schedule"><?php esc_html_e( 'Συχνότητα Ελέγχου (WP-Cron):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
+									<td>
+										<select name="imap_schedule" id="imap_schedule" style="min-width: 220px;">
+											<option value="hourly" <?php selected( $imap_settings['schedule'], 'hourly' ); ?>><?php esc_html_e( 'Κάθε 1 Ώρα', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
+											<option value="twicedaily" <?php selected( $imap_settings['schedule'], 'twicedaily' ); ?>><?php esc_html_e( 'Δύο Φορές την Ημέρα (Κάθε 12 Ώρες)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
+											<option value="daily" <?php selected( $imap_settings['schedule'], 'daily' ); ?>><?php esc_html_e( 'Μία Φορά την Ημέρα (Κάθε 24 Ώρες)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
+										</select>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+
+						<div style="margin-top: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+							<button type="submit" name="gt_cod_test_imap" class="button button-secondary">
+								<span class="dashicons dashicons-update" style="vertical-align: middle;"></span>
+								<?php esc_html_e( 'Δοκιμή Σύνδεσης IMAP', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+							</button>
+							<button type="submit" name="gt_cod_check_imap_now" class="button button-secondary">
+								<span class="dashicons dashicons-download" style="vertical-align: middle;"></span>
+								<?php esc_html_e( 'Άμεσος Έλεγχος & Συγχρονισμός Τώρα', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<div style="margin-top: 15px;">
+					<button type="submit" name="gt_cod_save_auto_settings" class="button button-primary button-large">
+						<span class="dashicons dashicons-saved" style="vertical-align: middle;"></span>
+						<?php esc_html_e( 'Αποθήκευση Ρυθμίσεων Αυτοματισμού', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+					</button>
+				</div>
+			</form>
 		</div>
 
+		
 	</div>
 </div>
 
