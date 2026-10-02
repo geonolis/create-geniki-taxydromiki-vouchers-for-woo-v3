@@ -19,19 +19,10 @@ class GT_COD_Importer {
 	 * Geniki Taxydromiki typically sends  tab-delimited files encoded in UTF-16LE with BOM.
 	 * This method handles UTF-16LE, UTF-16BE, UTF-8 (with/without BOM), and Windows-1253.
 	 *
-	 * @param string $file_path Path to the uploaded temporary file.
-	 * @return string|WP_Error Normalized UTF-8 string or WP_Error on failure.
+	 * @param string $raw Raw byte string from file or webhook payload.
+	 * @return string Normalized UTF-8 string.
 	 */
-	public static function read_file_content( string $file_path ) {
-		if ( ! file_exists( $file_path ) || ! is_readable( $file_path ) ) {
-			return new WP_Error( 'gt_file_missing', __( 'Το αρχείο δεν βρέθηκε ή δεν είναι αναγνώσιμο.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
-		}
-
-		$raw = file_get_contents( $file_path );
-		if ( false === $raw || strlen( $raw ) === 0 ) {
-			return new WP_Error( 'gt_file_empty', __( 'Το αρχείο είναι κενό.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
-		}
-
+	public static function normalize_content( string $raw ): string {
 		// Detect and strip BOM / convert encoding
 		if ( substr( $raw, 0, 2 ) === "\xFF\xFE" ) {
 			// UTF-16LE with BOM
@@ -61,6 +52,125 @@ class GT_COD_Importer {
 		}
 
 		return $content;
+	}
+
+	/** 
+	 * Reads and decodes a Geniki Taxydromiki CSV file, normalizing encoding to UTF-8.
+	 *
+	 * @param string $file_path Path to the uploaded temporary file.
+	 * @return string|WP_Error Normalized UTF-8 string or WP_Error on failure.
+	 */
+	public static function read_file_content( string $file_path ) {
+		if ( ! file_exists( $file_path ) || ! is_readable( $file_path ) ) {
+			return new WP_Error( 'gt_file_missing', __( 'Το αρχείο δεν βρέθηκε ή δεν είναι αναγνώσιμο.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+		}
+
+		$raw = file_get_contents( $file_path );
+		if ( false === $raw || strlen( $raw ) === 0 ) {
+			return new WP_Error( 'gt_file_empty', __( 'Το αρχείο είναι κενό.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+		}
+
+		return self::normalize_content( $raw );
+	}
+
+	/**
+	 * Retrieve or generate the webhook secret key for automated imports.
+	 *
+	 * @return string Secret key string.
+	 */
+	public static function get_webhook_secret(): string {
+		$secret = get_option( 'gtvfw_cod_webhook_secret' );
+		if ( empty( $secret ) ) {
+			$secret = wp_generate_password( 32, false );
+			update_option( 'gtvfw_cod_webhook_secret', $secret );
+		}
+		return $secret;
+	}
+
+	/**
+	 * Processes raw CSV text or binary bytes from webhook / automated import.
+	 *
+	 * @param string $raw_bytes Raw binary or text string from email attachment.
+	 * @param string $filename Name of the file being processed.
+	 * @return array|WP_Error Processing summary or WP_Error on failure.
+	 */
+	public static function process_raw_content( string $raw_bytes, string $filename = '' ) {
+		if ( empty( $raw_bytes ) ) {
+			return new WP_Error( 'gt_empty_content', __( 'Δεν ελήφθησαν δεδομένα αρχείου.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+		}
+
+		$normalized = self::normalize_content( $raw_bytes );
+		$raw_rows   = self::parse_csv_content( $normalized );
+
+		if ( is_wp_error( $raw_rows ) ) {
+			return $raw_rows;
+		}
+
+		if ( empty( $raw_rows ) ) {
+			return new WP_Error( 'gt_no_rows', __( 'Δεν βρέθηκαν γραμμές αποστολών στο αρχείο.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+		}
+
+		$matched_records = self::match_records( $raw_rows );
+
+		$updated_count = 0;
+		$already_paid  = 0;
+		$not_found     = 0;
+		$error_count   = 0;
+		$total_amount  = 0.0;
+		$details       = array();
+
+		foreach ( $matched_records as $rec ) {
+			if ( 'already_paid' === $rec['status_code'] ) {
+				$already_paid++;
+				$details[] = array(
+					'order_id' => $rec['order_id'],
+					'voucher'  => $rec['voucher'],
+					'status'   => 'already_paid',
+				);
+			} elseif ( ! empty( $rec['order_id'] ) && in_array( $rec['status_code'], array( 'ready', 'amount_mismatch' ), true ) ) {
+				$res = self::mark_order_cod_paid( $rec['order_id'], $rec );
+				if ( true === $res ) {
+					$updated_count++;
+					$total_amount += (float) $rec['amount'];
+					$details[] = array(
+						'order_id' => $rec['order_id'],
+						'voucher'  => $rec['voucher'],
+						'amount'   => $rec['amount'],
+						'status'   => 'updated',
+					);
+				} else {
+					$error_count++;
+					$details[] = array(
+						'order_id' => $rec['order_id'],
+						'voucher'  => $rec['voucher'],
+						'status'   => 'error',
+						'message'  => is_wp_error( $res ) ? $res->get_error_message() : 'Error',
+					);
+				}
+			} else {
+				$not_found++;
+				$details[] = array(
+					'voucher' => $rec['voucher'],
+					'status'  => 'not_found',
+				);
+			}
+		}
+
+		$summary = array(
+			'timestamp'      => current_time( 'mysql' ),
+			'filename'       => $filename ? sanitize_file_name( $filename ) : 'automated_import.csv',
+			'total_rows'     => count( $matched_records ),
+			'updated_orders' => $updated_count,
+			'already_paid'   => $already_paid,
+			'not_found'      => $not_found,
+			'errors'         => $error_count,
+			'total_amount'   => $total_amount,
+			'details'        => $details,
+		);
+
+		update_option( 'gtvfw_cod_webhook_last_log', $summary );
+
+		return $summary;
 	}
 
 	/**

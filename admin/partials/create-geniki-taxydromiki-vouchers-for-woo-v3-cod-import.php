@@ -15,6 +15,18 @@ $notice      = null;
 $records     = array();
 $processed   = array();
 
+// 0. Handle Secret Key Regeneration
+if ( isset( $_POST['gt_cod_regenerate_secret'] ) && check_admin_referer( 'gt_cod_regen_secret_nonce', 'gt_cod_regen_secret_nonce_field' ) ) {
+	if ( current_user_can( 'manage_woocommerce' ) || current_user_can( 'administrator' ) ) {
+		$new_secret = wp_generate_password( 32, false );
+		update_option( 'gtvfw_cod_webhook_secret', $new_secret );
+		$notice = array(
+			'type'    => 'success',
+			'message' => __( 'Δημιουργήθηκε νέο Secret Key για το Webhook επιτυχώς!', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
+		);
+	}
+}
+
 // 1. Process Order Updates Confirmation
 if ( isset( $_POST['gt_cod_confirm_import'] ) && check_admin_referer( 'gt_cod_confirm_nonce', 'gt_cod_confirm_nonce_field' ) ) {
 	if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'administrator' ) ) {
@@ -167,6 +179,191 @@ $cod_import_url = admin_url( 'admin.php?page=gtvfw_cod_import' );
 					<?php esc_html_e( 'Ανάλυση & Προεπισκόπηση Αρχείου', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 				</button>
 			</form>
+		</div>
+
+		<!-- Card 2: Automated Email Ingestion via Google Apps Script & Webhook -->
+		<?php
+		$webhook_url      = rest_url( 'gtvfw/v1/cod-webhook' );
+		$webhook_secret   = GT_COD_Importer::get_webhook_secret();
+		$last_webhook_log = get_option( 'gtvfw_cod_webhook_last_log' );
+		?>
+		<div class="card" style="max-width: 800px; padding: 25px; margin-top: 25px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+			<h2 style="margin-top: 0; color: #135e96; font-size: 1.3em;">
+				<span class="dashicons dashicons-email-alt" style="font-size: 26px; vertical-align: middle; margin-right: 5px;"></span>
+				<?php esc_html_e( 'Αυτόματη Εισαγωγή μέσω Email (Google Apps Script & Webhook)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+			</h2>
+
+			<p style="font-size: 14px; line-height: 1.6; color: #555;">
+				<?php esc_html_e( 'Συνδέστε το Gmail / Google Workspace σας (info@odosermou.gr) ώστε κάθε νέο email εκκαθάρισης από τη Γενική Ταχυδρομική να αποστέλλεται και να επεξεργάζεται αυτόματα στο WooCommerce χωρίς καμία χειροκίνητη ενέργεια.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+			</p>
+
+			<!-- Webhook Credentials Box -->
+			<div style="background: #fdfdfd; border: 1px solid #ccd0d4; padding: 18px; border-radius: 4px; margin: 15px 0;">
+				<div style="margin-bottom: 15px;">
+					<label for="gt_webhook_url" style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px;">
+						<?php esc_html_e( 'Webhook Endpoint URL:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+					</label>
+					<div style="display: flex; gap: 8px;">
+						<input type="text" id="gt_webhook_url" readonly value="<?php echo esc_url( $webhook_url ); ?>" style="width: 100%; font-family: monospace; font-size: 13px; background: #f0f0f1;" />
+						<button type="button" class="button" onclick="navigator.clipboard.writeText(document.getElementById('gt_webhook_url').value); alert('Το Webhook URL αντιγράφηκε!');">
+							<span class="dashicons dashicons-admin-page" style="vertical-align: middle; margin-top: -2px;"></span>
+							<?php esc_html_e( 'Αντιγραφή', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+						</button>
+					</div>
+				</div>
+
+				<div style="margin-bottom: 10px;">
+					<label for="gt_webhook_secret" style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px;">
+						<?php esc_html_e( 'Secret Key (Μυστικό Κλειδί Ασφαλείας):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+					</label>
+					<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+						<input type="password" id="gt_webhook_secret" readonly value="<?php echo esc_attr( $webhook_secret ); ?>" style="flex: 1; min-width: 250px; font-family: monospace; font-size: 13px; background: #f0f0f1;" />
+						<button type="button" class="button" id="gt-btn-toggle-secret" onclick="var inp = document.getElementById('gt_webhook_secret'); if (inp.type === 'password') { inp.type = 'text'; this.innerText = 'Απόκρυψη'; } else { inp.type = 'password'; this.innerText = 'Εμφάνιση'; }">
+							<?php esc_html_e( 'Εμφάνιση', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+						</button>
+						<button type="button" class="button" onclick="navigator.clipboard.writeText(document.getElementById('gt_webhook_secret').value); alert('Το Secret Key αντιγράφηκε!');">
+							<span class="dashicons dashicons-admin-page" style="vertical-align: middle; margin-top: -2px;"></span>
+							<?php esc_html_e( 'Αντιγραφή', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+						</button>
+						<form method="POST" action="<?php echo esc_url( $cod_import_url ); ?>" style="margin: 0; display: inline;" onsubmit="return confirm('Είστε σίγουροι ότι θέλετε να δημιουργήσετε νέο Secret Key; Θα πρέπει να το ενημερώσετε και στο Google Apps Script.');">
+							<?php wp_nonce_field( 'gt_cod_regen_secret_nonce', 'gt_cod_regen_secret_nonce_field' ); ?>
+							<button type="submit" name="gt_cod_regenerate_secret" class="button button-link-delete" style="font-size: 12px; margin-left: 5px;">
+								<?php esc_html_e( 'Δημιουργία Νέου Κλειδιού', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+							</button>
+						</form>
+					</div>
+				</div>
+			</div>
+
+			<!-- Last Execution Status -->
+			<div style="padding: 12px 16px; border-radius: 4px; margin-bottom: 20px; <?php echo $last_webhook_log ? 'background: #e7f5ea; border-left: 4px solid #46b450;' : 'background: #f6f7f7; border-left: 4px solid #b4b9be;'; ?>">
+				<strong style="font-size: 13px;"><?php esc_html_e( 'Κατάσταση Τελευταίας Αυτόματης Εισαγωγής:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></strong>
+				<?php if ( $last_webhook_log ) : ?>
+					<p style="margin: 5px 0 0 0; font-size: 13px;">
+						<?php
+						printf(
+							/* translators: 1: date, 2: filename, 3: updated orders, 4: total amount */
+							esc_html__( 'Ημερομηνία: %1$s | Αρχείο: %2$s | Ενημερώθηκαν: %3$d παραγγελίες (Σύνολο: %4$s €).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
+							esc_html( $last_webhook_log['timestamp'] ),
+							esc_html( $last_webhook_log['filename'] ),
+							(int) $last_webhook_log['updated_orders'],
+							esc_html( number_format( (float) $last_webhook_log['total_amount'], 2, ',', '.' ) )
+						);
+						?>
+						<?php if ( ! empty( $last_webhook_log['already_paid'] ) ) : ?>
+							<br><span style="color: #666; font-size: 12px;"><?php printf( esc_html__( 'Παραλείφθηκαν %d ήδη εξοφλημένες εγγραφές.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), (int) $last_webhook_log['already_paid'] ); ?></span>
+						<?php endif; ?>
+					</p>
+				<?php else : ?>
+					<p style="margin: 5px 0 0 0; font-size: 13px; color: #666;">
+						<?php esc_html_e( 'Δεν έχει καταγραφεί ακόμα αυτόματη εκτέλεση webhook.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+					</p>
+				<?php endif; ?>
+			</div>
+
+			<!-- Collapsible Google Apps Script Instructions -->
+			<details style="background: #f9f9f9; padding: 15px 20px; border-radius: 4px; border: 1px solid #ccd0d4; margin-top: 15px;">
+				<summary style="font-weight: 600; cursor: pointer; color: #005aa4; font-size: 14px; outline: none;">
+					<span class="dashicons dashicons-admin-generic" style="vertical-align: middle; margin-right: 4px;"></span>
+					<?php esc_html_e( 'Οδηγίες Ρύθμισης στο Google Workspace (script.google.com)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+				</summary>
+
+				<div style="margin-top: 15px; font-size: 13px; line-height: 1.6;">
+					<ol style="margin-left: 20px;">
+						<li><?php echo sprintf( __( 'Συνδεθείτε στο λογαριασμό σας <strong>info@odosermou.gr</strong> και ανοίξτε το <a href="%s" target="_blank">Google Apps Script (script.google.com)</a>.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), 'https://script.google.com/' ); ?></li>
+						<li><?php esc_html_e( 'Κάντε κλικ στο κουμπί "Νέο έργο" (New project) και ονομάστε το: "Geniki Taxydromiki COD Sync".', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
+						<li><?php esc_html_e( 'Αντικαταστήστε όλο το περιεχόμενο του αρχείου Code.gs με τον παρακάτω προ-ρυθμισμένο κώδικα:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
+					</ol>
+
+					<?php
+					$script_template = 'function syncGenikiCODToWooCommerce() {
+  const WEBHOOK_URL = "' . esc_url_raw( $webhook_url ) . '";
+  const SECRET_KEY  = "' . esc_js( $webhook_secret ) . '";
+
+  // Search unread emails from Geniki Taxydromiki with attachments
+  const searchQuery = "from:taxydromiki.gr has:attachment is:unread";
+  const threads = GmailApp.search(searchQuery, 0, 5);
+
+  let processedCount = 0;
+
+  for (let t = 0; t < threads.length; t++) {
+    const messages = threads[t].getMessages();
+    for (let m = 0; m < messages.length; m++) {
+      const message = messages[m];
+      if (!message.isUnread()) continue;
+
+      const attachments = message.getAttachments();
+      for (let a = 0; a < attachments.length; a++) {
+        const attachment = attachments[a];
+        const name = attachment.getName().toLowerCase();
+
+        if (name.endsWith(".csv") || name.endsWith(".txt") || name.endsWith(".tsv")) {
+          Logger.log("Processing COD file: " + attachment.getName());
+
+          const payload = {
+            filename: attachment.getName(),
+            content: Utilities.base64Encode(attachment.getBytes()),
+            encoding: "base64",
+            email_subject: message.getSubject(),
+            email_date: message.getDate().toISOString()
+          };
+
+          const options = {
+            method: "post",
+            contentType: "application/json",
+            headers: {
+              "X-GT-Secret": SECRET_KEY
+            },
+            payload: JSON.stringify(payload),
+            muteHttpExceptions: true
+          };
+
+          const response = UrlFetchApp.fetch(WEBHOOK_URL, options);
+          const code = response.getResponseCode();
+          const text = response.getContentText();
+
+          Logger.log("Response (" + code + "): " + text);
+
+          if (code === 200) {
+            const res = JSON.parse(text);
+            if (res.success) {
+              message.markRead();
+              let label = GmailApp.getUserLabelByName("COD-Processed");
+              if (!label) {
+                label = GmailApp.createLabel("COD-Processed");
+              }
+              threads[t].addLabel(label);
+              processedCount++;
+            }
+          }
+        }
+      }
+    }
+  }
+  Logger.log("Finished. Processed " + processedCount + " files.");
+}';
+					?>
+
+					<div style="position: relative; margin: 15px 0;">
+						<textarea id="gt_gas_code" readonly style="width: 100%; height: 260px; font-family: Consolas, Monaco, monospace; font-size: 12px; background: #282c34; color: #abb2bf; padding: 12px; border-radius: 4px; box-sizing: border-box;"><?php echo esc_textarea( $script_template ); ?></textarea>
+						<button type="button" class="button button-primary" style="margin-top: 6px;" onclick="navigator.clipboard.writeText(document.getElementById('gt_gas_code').value); alert('Ο κώδικας Google Apps Script αντιγράφηκε στο πρόχειρο!');">
+							<span class="dashicons dashicons-clipboard" style="vertical-align: middle; margin-top: -2px;"></span>
+							<?php esc_html_e( 'Αντιγραφή Κώδικα Google Apps Script', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+						</button>
+					</div>
+
+					<ol start="4" style="margin-left: 20px;">
+						<li><?php esc_html_e( 'Κάντε κλικ στο "Αποθήκευση" (Save) και πατήστε "Εκτέλεση" (Run) μία φορά για να δώσετε έγκριση ανάγνωσης των μηνυμάτων Gmail.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
+						<li><?php esc_html_e( 'Στο αριστερό μενού επιλέξτε "Ενάρξεις" (Triggers - εικονίδιο ρολογιού) > "Προσθήκη έναρξης" (Add Trigger):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+							<ul style="margin: 4px 0 0 15px; list-style-type: disc;">
+								<li><?php esc_html_e( 'Επιλέξτε συνάρτηση: syncGenikiCODToWooCommerce', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
+								<li><?php esc_html_e( 'Πηγή συμβάντος: Βάσει χρόνου (Time-driven)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
+								<li><?php esc_html_e( 'Τύπος: Χρονόμετρο λεπτών ή ωρών (π.χ. Κάθε 15 ή 30 λεπτά)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
+							</ul>
+						</li>
+					</ol>
+				</div>
+			</details>
 		</div>
 
 	<!-- Step 2: Preview & Confirmation -->

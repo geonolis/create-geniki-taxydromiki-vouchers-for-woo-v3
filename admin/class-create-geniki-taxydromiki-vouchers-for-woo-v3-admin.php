@@ -697,4 +697,112 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 		}
 	}
 
+	/**
+	 * Register REST API route for automated COD webhook.
+	 */
+	public function register_rest_routes() {
+		register_rest_route( 'gtvfw/v1', '/cod-webhook', array(
+			'methods'             => WP_REST_Server::CREATABLE, // POST
+			'callback'            => array( $this, 'handle_cod_webhook' ),
+			'permission_callback' => array( $this, 'check_cod_webhook_permissions' ),
+		) );
+	}
+
+	/**
+	 * Verify secret token for incoming COD webhook request.
+	 *
+	 * @param WP_REST_Request $request
+	 * @return bool|WP_Error
+	 */
+	public function check_cod_webhook_permissions( WP_REST_Request $request ) {
+		$secret_expected = GT_COD_Importer::get_webhook_secret();
+
+		// Check header X-GT-Secret
+		$secret_provided = $request->get_header( 'x-gt-secret' );
+
+		// Fallback: check query parameter or body parameter
+		if ( empty( $secret_provided ) ) {
+			$secret_provided = $request->get_param( 'secret' );
+		}
+
+		// Fallback: check Authorization Bearer
+		if ( empty( $secret_provided ) ) {
+			$auth = $request->get_header( 'authorization' );
+			if ( $auth && 0 === stripos( $auth, 'Bearer ' ) ) {
+				$secret_provided = trim( substr( $auth, 7 ) );
+			}
+		}
+
+		if ( ! empty( $secret_provided ) && hash_equals( $secret_expected, (string) $secret_provided ) ) {
+			return true;
+		}
+
+		return new WP_Error(
+			'gt_unauthorized',
+			__( 'Μη εξουσιοδοτημένη πρόσβαση: Μη έγκυρο secret key.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
+			array( 'status' => 401 )
+		);
+	}
+
+	/**
+	 * Handle incoming COD file payload from Google Apps Script / webhook.
+	 *
+	 * @param WP_REST_Request $request
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function handle_cod_webhook( WP_REST_Request $request ) {
+		$raw_content = '';
+		$filename    = 'email_attachment.csv';
+
+		// 1. JSON payload with base64 or text content
+		$json = $request->get_json_params();
+		if ( ! empty( $json['content'] ) ) {
+			if ( ! empty( $json['encoding'] ) && 'base64' === strtolower( $json['encoding'] ) ) {
+				$raw_content = base64_decode( $json['content'] );
+			} else {
+				$raw_content = (string) $json['content'];
+			}
+			if ( ! empty( $json['filename'] ) ) {
+				$filename = sanitize_file_name( $json['filename'] );
+			}
+		}
+		// 2. Multipart file upload ($_FILES['cod_file'])
+		elseif ( ! empty( $_FILES['cod_file']['tmp_name'] ) ) {
+			$raw_content = file_get_contents( $_FILES['cod_file']['tmp_name'] );
+			$filename    = sanitize_file_name( $_FILES['cod_file']['name'] );
+		}
+		// 3. Raw body text
+		elseif ( ! empty( $request->get_body() ) ) {
+			$raw_content = $request->get_body();
+			$filename    = $request->get_param( 'filename' ) ? sanitize_file_name( $request->get_param( 'filename' ) ) : 'raw_body.csv';
+		}
+
+		if ( empty( $raw_content ) ) {
+			return new WP_Error(
+				'gt_empty_payload',
+				__( 'Δεν στάλθηκαν δεδομένα αρχείου (κενό payload).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$result = GT_COD_Importer::process_raw_content( $raw_content, $filename );
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return rest_ensure_response( array(
+			'success'        => true,
+			'message'        => sprintf( __( 'Ενημερώθηκαν επιτυχώς %d παραγγελίες.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), $result['updated_orders'] ),
+			'filename'       => $result['filename'],
+			'total_rows'     => $result['total_rows'],
+			'updated_orders' => $result['updated_orders'],
+			'already_paid'   => $result['already_paid'],
+			'not_found'      => $result['not_found'],
+			'errors'         => $result['errors'],
+			'total_amount'   => $result['total_amount'],
+			'timestamp'      => $result['timestamp'],
+		) );
+	}
+
 } //class

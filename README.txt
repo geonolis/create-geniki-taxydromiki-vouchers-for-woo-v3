@@ -19,6 +19,7 @@ Connects WooCommerce to Geniki Taxydromiki Web Services for automated voucher cr
 * **Voucher Automation**: Automatically create vouchers when orders are marked as completed.
 * **Tracking & Route Details**: Display live status and tracking route in WooCommerce Orders admin table, order edit screen metabox, and customer emails.
 * **COD Settlement Import**: Upload and process Geniki Taxydromiki COD CSV/TSV settlement files with smart encoding handling (UTF-16LE with BOM, Windows-1253, UTF-8).
+* **Automated Email Ingestion**: Ingest COD CSV files automatically via Google Apps Script and secure REST API webhook.
 * **Order List Filter**: Filter orders by "ΓΤ: Εξοφλημένες Α/Κ" (COD Paid) and "ΓΤ: Εκκρεμείς Α/Κ" (COD Pending).
 * **HPOS Compatibility**: Fully compatible with WooCommerce High-Performance Order Storage (HPOS).
 * **Voucher Search**: Search orders directly by Geniki Taxydromiki voucher number.

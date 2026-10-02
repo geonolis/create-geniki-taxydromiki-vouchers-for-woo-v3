@@ -208,6 +208,9 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3 {
 		// CPT
 		$this->loader->add_action( 'restrict_manage_posts', $plugin_admin, 'render_order_list_cod_filter', 20, 2 );
 		$this->loader->add_action( 'pre_get_posts', $plugin_admin, 'filter_cpt_orders_by_cod_status', 10, 1 );
+
+		// Register REST API route for automated COD email webhook
+		$this->loader->add_action( 'rest_api_init', $plugin_admin, 'register_rest_routes' );
 	}
 
 	/**

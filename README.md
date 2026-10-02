@@ -30,6 +30,10 @@
   * Identifies discrepancies between the order total and the collected amount (> 0.05€ tolerance).
   * Prevents duplicate imports by flagging already paid orders.
 * **Audit Trail**: Adds private internal order notes with amount, voucher, and delivery date, and records structured order metadata (`gt_cod_paid`, `gt_cod_paid_amount`, `gt_cod_paid_date`, `gt_cod_delivery_date`).
+* **Automated Email Ingestion (Google Apps Script & Webhook)**:
+  * Secure REST API webhook (`POST /wp-json/gtvfw/v1/cod-webhook`) authenticated via secret token.
+  * Connects directly with Google Workspace (`info@odosermou.gr`) via a lightweight Google Apps Script.
+  * Automatically scans for incoming settlement emails, extracts CSV attachments, and reconciles orders on schedule without any manual uploads.
 
 ### 4. WooCommerce Order List Filter
 * Filter orders table with a single click:
