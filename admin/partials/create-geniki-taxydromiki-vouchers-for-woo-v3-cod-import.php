@@ -117,13 +117,15 @@ if ( isset( $_POST['gt_cod_confirm_import'] ) && check_admin_referer( 'gt_cod_co
 	if ( ! empty( $all_records ) && is_array( $all_records ) ) {
 		$action_step = 'completed';
 		$updated_count = 0;
-		$skipped_count = 0;
+		$skipped_count        = 0;
+		$total_amount_updated = 0.0;
 
 		foreach ( $all_records as $idx => $record ) {
 			if ( in_array( (string) $idx, $selected_rows, true ) && ! empty( $record['order_id'] ) ) {
 				$res = GT_COD_Importer::mark_order_cod_paid( $record['order_id'], $record );
 				if ( true === $res ) {
 					$updated_count++;
+					$total_amount_updated += (float) ( $record['amount'] ?? 0 );
 					$processed[] = array(
 						'order_id'   => $record['order_id'],
 						'voucher'    => $record['voucher'],
@@ -143,6 +145,15 @@ if ( isset( $_POST['gt_cod_confirm_import'] ) && check_admin_referer( 'gt_cod_co
 				}
 			}
 		}
+
+		update_option( 'gtvfw_cod_last_clearance_info', array(
+			'timestamp'      => current_time( 'mysql' ),
+			'source'         => 'manual',
+			'filename'       => isset( $_POST['gt_cod_filename'] ) ? sanitize_file_name( $_POST['gt_cod_filename'] ) : 'manual_upload.csv',
+			'updated_orders' => $updated_count,
+			'skipped_orders' => $skipped_count,
+			'total_amount'   => $total_amount_updated,
+		) );
 
 		$notice = array(
 			'type'    => 'success',
@@ -167,8 +178,9 @@ elseif ( isset( $_POST['gt_cod_upload_file'] ) && check_admin_referer( 'gt_cod_u
 			'message' => __( 'Παρακαλούμε επιλέξτε ένα έγκυρο αρχείο CSV.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
 		);
 	} else {
-		$file_tmp = $_FILES['cod_csv_file']['tmp_name'];
-		$content  = GT_COD_Importer::read_file_content( $file_tmp );
+		$file_tmp          = $_FILES['cod_csv_file']['tmp_name'];
+		$uploaded_filename = sanitize_file_name( $_FILES['cod_csv_file']['name'] );
+		$content           = GT_COD_Importer::read_file_content( $file_tmp );
 
 		if ( is_wp_error( $content ) ) {
 			$notice = array(
@@ -206,13 +218,13 @@ $invoice_import_url = admin_url( 'admin.php?page=gtvfw_invoice_import' );
 	<!-- Tab Navigation -->
 	<nav class="nav-tab-wrapper wp-clearfix" style="margin-bottom: 20px;">
 		<a href="<?php echo esc_url( $settings_url ); ?>" class="nav-tab">
-			<?php esc_html_e( 'Ρυθμίσεις Σύνδεσης', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+			<?php esc_html_e( 'Ρυθμίσεις & Αυτοματισμός (Hub)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 		</a>
 		<a href="<?php echo esc_url( $cod_import_url ); ?>" class="nav-tab nav-tab-active">
-			<?php esc_html_e( 'Εισαγωγή Πληρωμών Αντικαταβολής (COD)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+			<?php esc_html_e( 'Αντικαταβολές (COD)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 		</a>
 		<a href="<?php echo esc_url( $invoice_import_url ); ?>" class="nav-tab">
-			<?php esc_html_e( 'Τιμολόγια & Έλεγχος Κόστους', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+			<?php esc_html_e( 'Τιμολόγια & Έλεγχος Κόστους (P&L)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 		</a>
 	</nav>
 
@@ -222,459 +234,142 @@ $invoice_import_url = admin_url( 'admin.php?page=gtvfw_invoice_import' );
 		</div>
 	<?php endif; ?>
 
-	<!-- Step 1: Upload Form -->
+	<!-- Step 1: Upload Form & History -->
 	<?php if ( 'upload' === $action_step ) : ?>
-		<div class="card" style="max-width: 800px; padding: 25px; margin-top: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-			<h2 style="margin-top: 0; color: #005aa4; font-size: 1.3em;">
-				<span class="dashicons dashicons-upload" style="font-size: 26px; vertical-align: middle; margin-right: 5px;"></span>
-				<?php esc_html_e( 'Μεταφόρτωση Αρχείου Αντικαταβολών Γενικής Ταχυδρομικής', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-			</h2>
-			<p style="font-size: 14px; line-height: 1.6; color: #555;">
-				<?php esc_html_e( 'Επιλέξτε το αρχείο CSV που σας αποστέλλει περιοδικά η Γενική Ταχυδρομική μέσω email με τις εκκαθαρίσεις των αντικαταβολών σας (π.χ. TAXYDR...csv).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-			</p>
-
-			<div style="background: #f0f7fc; border-left: 4px solid #005aa4; padding: 12px 16px; margin: 15px 0; border-radius: 2px;">
-				<p style="margin: 0; font-size: 13px;">
-					<strong><?php esc_html_e( 'Υποστηριζόμενα Χαρακτηριστικά:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></strong>
-					<ul style="margin: 5px 0 0 18px; font-size: 13px; list-style-type: disc;">
-						<li><?php esc_html_e( 'Αυτόματη αναγνώριση κωδικοποίησης (UTF-16LE, Windows-1253, UTF-8 με BOM).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
-						<li><?php esc_html_e( 'Αναζήτηση παραγγελίας βάσει Αριθμού Voucher (Αποδεικτικό) ή Αριθμού Παραγγελίας (#Order ID).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
-						<li><?php esc_html_e( 'Προεπισκόπηση και έλεγχος ποσών πριν την εφαρμογή.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
-						<li><?php esc_html_e( 'Καταχώρηση εσωτερικής σημείωσης & metadata για ασφαλή ιχνηλασιμότητα.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
-					</ul>
+		<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; margin-top: 15px;">
+			<div class="card" style="flex: 1; min-width: 320px; max-width: 720px; padding: 25px; margin: 0; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+				<h2 style="margin-top: 0; color: #005aa4; font-size: 1.3em;">
+					<span class="dashicons dashicons-upload" style="font-size: 26px; vertical-align: middle; margin-right: 5px;"></span>
+					<?php esc_html_e( 'Χειροκίνητο Ανέβασμα Αρχείου Αντικαταβολών (TAXYDR...csv)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+				</h2>
+				<p style="font-size: 14px; line-height: 1.6; color: #555;">
+					<?php esc_html_e( 'Επιλέξτε το αρχείο CSV που σας αποστέλλει περιοδικά η Γενική Ταχυδρομική μέσω email (από cod@taxydromiki.gr) με τις εκκαθαρίσεις των εισπράξεων αντικαταβολών.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 				</p>
+
+				<div style="background: #f0f7fc; border-left: 4px solid #005aa4; padding: 12px 16px; margin: 15px 0; border-radius: 2px;">
+					<p style="margin: 0; font-size: 13px;">
+						<strong><?php esc_html_e( 'Διαδικασία Επεξεργασίας:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></strong>
+						<ul style="margin: 5px 0 0 18px; font-size: 13px; list-style-type: disc;">
+							<li><?php esc_html_e( 'Αυτόματη αναγνώριση κωδικοποίησης (Windows-1253, UTF-16LE, UTF-8 με/χωρίς BOM).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
+							<li><?php esc_html_e( 'Αναζήτηση παραγγελίας βάσει Αριθμού Voucher ή Αριθμού Παραγγελίας (#Order ID).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
+							<li><?php esc_html_e( 'Προεπισκόπηση & έλεγχος ποσών αντικαταβολής πριν την οριστική αποθήκευση.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
+							<li><?php esc_html_e( 'Καταχώρηση εσωτερικής σημείωσης πληρωμής και ενημέρωση κατάστασης παραγγελίας.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
+						</ul>
+					</p>
+				</div>
+
+				<form method="POST" enctype="multipart/form-data" action="<?php echo esc_url( $cod_import_url ); ?>" style="margin-top: 20px;">
+					<?php wp_nonce_field( 'gt_cod_upload_nonce', 'gt_cod_upload_nonce_field' ); ?>
+					
+					<div style="padding: 20px; border: 2px dashed #b4b9be; background: #fafafa; text-align: center; border-radius: 4px; margin-bottom: 20px;">
+						<label for="cod_csv_file" style="display: block; font-weight: 600; margin-bottom: 10px; font-size: 14px;">
+							<?php esc_html_e( 'Επιλογή αρχείου (.csv, .txt):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+						</label>
+						<input type="file" name="cod_csv_file" id="cod_csv_file" accept=".csv,.txt,.tsv" required style="font-size: 14px;" />
+					</div>
+
+					<button type="submit" name="gt_cod_upload_file" class="button button-primary button-large" style="background: #005aa4; border-color: #00457d;">
+						<span class="dashicons dashicons-search" style="vertical-align: middle; margin-right: 4px;"></span>
+						<?php esc_html_e( 'Ανάλυση & Προεπισκόπηση Εισπράξεων', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+					</button>
+				</form>
 			</div>
 
-			<form method="POST" enctype="multipart/form-data" action="<?php echo esc_url( $cod_import_url ); ?>" style="margin-top: 20px;">
-				<?php wp_nonce_field( 'gt_cod_upload_nonce', 'gt_cod_upload_nonce_field' ); ?>
-				
-				<div style="padding: 20px; border: 2px dashed #b4b9be; background: #fafafa; text-align: center; border-radius: 4px; margin-bottom: 20px;">
-					<label for="cod_csv_file" style="display: block; font-weight: 600; margin-bottom: 10px; font-size: 14px;">
-						<?php esc_html_e( 'Επιλογή αρχείου (.csv, .txt):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-					</label>
-					<input type="file" name="cod_csv_file" id="cod_csv_file" accept=".csv,.txt,.tsv" required style="font-size: 14px;" />
-				</div>
-
-				<button type="submit" name="gt_cod_upload_file" class="button button-primary button-hero" style="background: #005aa4; border-color: #00457d;">
-					<span class="dashicons dashicons-search" style="vertical-align: middle; margin-top: -2px;"></span>
-					<?php esc_html_e( 'Ανάλυση & Προεπισκόπηση Αρχείου', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-				</button>
-			</form>
-		</div>
-
-		<!-- Card 2: Automated Email Ingestion (Choice between Webhook & IMAP) -->
+		<!-- Card 2: Last Clearance History Card -->
 		<?php
-		$auto_method      = GT_COD_Importer::get_auto_method();
-		$webhook_url      = rest_url( 'gtvfw/v1/cod-webhook' );
-		$webhook_secret   = GT_COD_Importer::get_webhook_secret();
-		$last_webhook_log = get_option( 'gtvfw_cod_webhook_last_log' );
-		$imap_settings    = GT_COD_Importer::get_imap_settings();
-		$last_imap_log    = get_option( 'gtvfw_cod_imap_last_log' );
-		$imap_next_cron   = wp_next_scheduled( 'gtvfw_cod_imap_cron_check' );
+		$last_clearance_info = get_option( 'gtvfw_cod_last_clearance_info' );
+		$last_webhook_log    = get_option( 'gtvfw_cod_webhook_last_log' );
+		$last_imap_log       = get_option( 'gtvfw_cod_imap_last_log' );
+
+		// Determine most recent clearance across manual, webhook, or IMAP
+		$latest_clearance = null;
+		$clearance_source = '';
+
+		if ( ! empty( $last_clearance_info['timestamp'] ) ) {
+			$latest_clearance = $last_clearance_info;
+			$clearance_source = __( 'Χειροκίνητο CSV', 'create-geniki-taxydromiki-vouchers-for-woo-v3' );
+		}
+		if ( ! empty( $last_webhook_log['timestamp'] ) ) {
+			if ( ! $latest_clearance || strcmp( $last_webhook_log['timestamp'], $latest_clearance['timestamp'] ) > 0 ) {
+				$latest_clearance = $last_webhook_log;
+				$clearance_source = __( 'Email Webhook (GAS)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' );
+			}
+		}
+		if ( ! empty( $last_imap_log['timestamp'] ) ) {
+			if ( ! $latest_clearance || strcmp( $last_imap_log['timestamp'], $latest_clearance['timestamp'] ) > 0 ) {
+				$latest_clearance = $last_imap_log;
+				$clearance_source = __( 'Email IMAP', 'create-geniki-taxydromiki-vouchers-for-woo-v3' );
+			}
+		}
 		?>
-		<div class="card" style="max-width: 820px; padding: 25px; margin-top: 25px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-			<h2 style="margin-top: 0; color: #135e96; font-size: 1.3em;">
-				<span class="dashicons dashicons-email-alt" style="font-size: 26px; vertical-align: middle; margin-right: 5px;"></span>
-				<?php esc_html_e( 'Αυτόματη Εισαγωγή Εκκαθαρίσεων Αντικαταβολών από Email', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+		<div class="card" style="flex: 1; min-width: 320px; max-width: 500px; padding: 25px; margin: 0; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+			<h2 style="margin-top: 0; color: #23282d; font-size: 1.2em;">
+				<span class="dashicons dashicons-backup" style="font-size: 22px; vertical-align: middle; margin-right: 5px;"></span>
+				<?php esc_html_e( 'Ιστορικό Τελευταίας Εκκαθάρισης', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 			</h2>
 
-			<p style="font-size: 14px; line-height: 1.6; color: #555;">
-				<?php esc_html_e( 'Επιλέξτε τη μέθοδο αυτοματισμού που προτιμάτε για την παραλαβή και αυτόματη ενημέρωση των πληρωμών αντικαταβολής από τη Γενική Ταχυδρομική.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-			</p>
-
-			<form method="POST" action="<?php echo esc_url( $cod_import_url ); ?>" id="gt_cod_auto_form">
-				<?php wp_nonce_field( 'gt_cod_auto_settings_nonce', 'gt_cod_auto_settings_nonce_field' ); ?>
-
-				<!-- Method Selector Radios -->
-				<div style="background: #f0f7fc; border: 1px solid #b8daff; border-radius: 5px; padding: 15px 20px; margin: 15px 0 20px 0;">
-					<label style="font-weight: 600; display: block; margin-bottom: 10px; font-size: 13px; color: #005aa4;">
-						<?php esc_html_e( 'Επιλογή Μεθόδου Αυτοματισμού:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-					</label>
-					<div style="display: flex; gap: 20px; flex-wrap: wrap;">
-						<label style="display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer;">
-							<input type="radio" name="gt_cod_auto_method" value="webhook" <?php checked( $auto_method, 'webhook' ); ?> onchange="gtToggleAutoMethod('webhook');" />
-							<strong><?php esc_html_e( 'Google Apps Script & Webhook (Προτεινόμενο για Gmail / Google Workspace)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></strong>
-						</label>
-						<label style="display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer;">
-							<input type="radio" name="gt_cod_auto_method" value="imap" <?php checked( $auto_method, 'imap' ); ?> onchange="gtToggleAutoMethod('imap');" />
-							<strong><?php esc_html_e( 'Διακομιστής Αλληλογραφίας IMAP (Απευθείας ανάγνωση)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></strong>
-						</label>
-						<label style="display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer;">
-							<input type="radio" name="gt_cod_auto_method" value="disabled" <?php checked( $auto_method, 'disabled' ); ?> onchange="gtToggleAutoMethod('disabled');" />
-							<span><?php esc_html_e( 'Απενεργοποιημένο (Μόνο Χειροκίνητη Φόρτωση)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></span>
-						</label>
-					</div>
-				</div>
-
-				<!-- Panel 1: Google Apps Script & Webhook -->
-				<div id="gt_panel_webhook" style="<?php echo 'webhook' === $auto_method ? '' : 'display:none;'; ?>">
-					<!-- Webhook Credentials Box -->
-					<div style="background: #fdfdfd; border: 1px solid #ccd0d4; padding: 18px; border-radius: 4px; margin: 15px 0;">
-						<div style="margin-bottom: 15px;">
-							<label for="gt_webhook_url" style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px;">
-								<?php esc_html_e( 'Webhook Endpoint URL:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-							</label>
-							<div style="display: flex; gap: 8px;">
-								<input type="text" id="gt_webhook_url" readonly value="<?php echo esc_url( $webhook_url ); ?>" style="width: 100%; font-family: monospace; font-size: 13px; background: #f0f0f1;" />
-								<button type="button" class="button" onclick="navigator.clipboard.writeText(document.getElementById('gt_webhook_url').value); alert('Το Webhook URL αντιγράφηκε!');">
-									<span class="dashicons dashicons-admin-page" style="vertical-align: middle; margin-top: -2px;"></span>
-									<?php esc_html_e( 'Αντιγραφή', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-								</button>
-							</div>
-						</div>
-
-						<div style="margin-bottom: 10px;">
-							<label for="gt_webhook_secret" style="display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px;">
-								<?php esc_html_e( 'Secret Key (Μυστικό Κλειδί Ασφαλείας):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-							</label>
-							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-								<input type="password" id="gt_webhook_secret" readonly value="<?php echo esc_attr( $webhook_secret ); ?>" style="flex: 1; min-width: 250px; font-family: monospace; font-size: 13px; background: #f0f0f1;" />
-								<button type="button" class="button" id="gt-btn-toggle-secret" onclick="var inp = document.getElementById('gt_webhook_secret'); if (inp.type === 'password') { inp.type = 'text'; this.innerText = 'Απόκρυψη'; } else { inp.type = 'password'; this.innerText = 'Εμφάνιση'; }">
-									<?php esc_html_e( 'Εμφάνιση', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-								</button>
-								<button type="button" class="button" onclick="navigator.clipboard.writeText(document.getElementById('gt_webhook_secret').value); alert('Το Secret Key αντιγράφηκε!');">
-									<span class="dashicons dashicons-admin-page" style="vertical-align: middle; margin-top: -2px;"></span>
-									<?php esc_html_e( 'Αντιγραφή', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-								</button>
-								<button type="submit" form="gt_regen_secret_form" name="gt_cod_regenerate_secret" class="button button-link-delete" style="font-size: 12px; margin-left: 5px;" onclick="return confirm('Είστε σίγουροι ότι θέλετε να δημιουργήσετε νέο Secret Key; Θα πρέπει να το ενημερώσετε και στο Google Apps Script.');">
-									<?php esc_html_e( 'Δημιουργία Νέου Κλειδιού', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-								</button>
-							</div>
-						</div>
-					</div>
-
-					<!-- Last Execution Status -->
-					<div style="padding: 12px 16px; border-radius: 4px; margin-bottom: 20px; <?php echo $last_webhook_log ? 'background: #e7f5ea; border-left: 4px solid #46b450;' : 'background: #f6f7f7; border-left: 4px solid #b4b9be;'; ?>">
-						<strong style="font-size: 13px;"><?php esc_html_e( 'Κατάσταση Τελευταίας Αυτόματης Εισαγωγής (Webhook):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></strong>
-						<?php if ( $last_webhook_log ) : ?>
-							<p style="margin: 5px 0 0 0; font-size: 13px;">
-								<?php
-								printf(
-									/* translators: 1: date, 2: filename, 3: updated orders, 4: total amount */
-									esc_html__( 'Ημερομηνία: %1$s | Αρχείο: %2$s | Ενημερώθηκαν: %3$d παραγγελίες (Σύνολο: %4$s €).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
-									esc_html( $last_webhook_log['timestamp'] ),
-									esc_html( $last_webhook_log['filename'] ),
-									(int) $last_webhook_log['updated_orders'],
-									esc_html( number_format( (float) $last_webhook_log['total_amount'], 2, ',', '.' ) )
-								);
-								?>
-								<?php if ( ! empty( $last_webhook_log['already_paid'] ) ) : ?>
-									<br><span style="color: #666; font-size: 12px;"><?php printf( esc_html__( 'Παραλείφθηκαν %d ήδη εξοφλημένες εγγραφές.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), (int) $last_webhook_log['already_paid'] ); ?></span>
-								<?php endif; ?>
-							</p>
-						<?php else : ?>
-							<p style="margin: 5px 0 0 0; font-size: 13px; color: #666;">
-								<?php esc_html_e( 'Δεν έχει καταγραφεί ακόμα αυτόματη εκτέλεση webhook.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-							</p>
+			<?php if ( $latest_clearance ) : ?>
+				<table class="widefat striped" style="margin-top: 15px; border-radius: 4px;">
+					<tbody>
+						<tr>
+							<td style="font-weight: 600; width: 45%;"><?php esc_html_e( 'Ημερομηνία:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></td>
+							<td><?php echo esc_html( $latest_clearance['timestamp'] ); ?></td>
+						</tr>
+						<tr>
+							<td style="font-weight: 600;"><?php esc_html_e( 'Προέλευση:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></td>
+							<td>
+								<span class="dashicons dashicons-yes-alt" style="color: #46b450; font-size: 16px; vertical-align: text-top;"></span>
+								<strong><?php echo esc_html( $clearance_source ); ?></strong>
+							</td>
+						</tr>
+						<tr>
+							<td style="font-weight: 600;"><?php esc_html_e( 'Αρχείο:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></td>
+							<td><code><?php echo esc_html( $latest_clearance['filename'] ?? 'clearance.csv' ); ?></code></td>
+						</tr>
+						<tr>
+							<td style="font-weight: 600;"><?php esc_html_e( 'Ενημερωμένες Παραγγελίες:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></td>
+							<td><strong style="color: #005aa4; font-size: 14px;"><?php echo (int) ( $latest_clearance['updated_orders'] ?? 0 ); ?></strong></td>
+						</tr>
+						<?php if ( isset( $latest_clearance['total_amount'] ) ) : ?>
+						<tr>
+							<td style="font-weight: 600;"><?php esc_html_e( 'Συνολικό Ποσό Είσπραξης:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></td>
+							<td>
+								<strong style="color: #2e7d32; font-size: 14px;">
+									<?php echo esc_html( number_format( (float) $latest_clearance['total_amount'], 2, ',', '.' ) ); ?> €
+								</strong>
+							</td>
+						</tr>
 						<?php endif; ?>
-					</div>
-
-					<!-- Collapsible Google Apps Script Instructions -->
-					<details style="background: #f9f9f9; padding: 15px 20px; border-radius: 4px; border: 1px solid #ccd0d4; margin-top: 15px;" open>
-						<summary style="font-weight: 600; cursor: pointer; color: #005aa4; font-size: 14px; outline: none;">
-							<span class="dashicons dashicons-admin-generic" style="vertical-align: middle; margin-right: 4px;"></span>
-							<?php esc_html_e( 'Οδηγίες Ρύθμισης στο Google Workspace (script.google.com)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-						</summary>
-
-						<div style="margin-top: 15px; font-size: 13px; line-height: 1.6;">
-							<ol style="margin-left: 20px;">
-								<li><?php echo sprintf( __( 'Συνδεθείτε στο λογαριασμό σας <strong>info@odosermou.gr</strong> και ανοίξτε το <a href="%s" target="_blank">Google Apps Script (script.google.com)</a>.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), 'https://script.google.com/' ); ?></li>
-								<li><?php esc_html_e( 'Κάντε κλικ στο κουμπί "Νέο έργο" (New project) και ονομάστε το: "Geniki Taxydromiki COD Sync".', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
-								<li><?php esc_html_e( 'Αντικαταστήστε όλο το περιεχόμενο του αρχείου Code.gs με τον παρακάτω προ-ρυθμισμένο κώδικα:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
-							</ol>
-
-							<?php
-							$script_template = 'function syncGenikiCODToWooCommerce() {
-  const WEBHOOK_URL = "' . esc_url_raw( $webhook_url ) . '";
-  const SECRET_KEY  = "' . esc_js( $webhook_secret ) . '";
-
-  // Search emails from cod@taxydromiki.gr with attachments that haven\'t been tagged with COD-Processed yet
-  const searchQuery = "from:cod@taxydromiki.gr has:attachment -label:COD-Processed";
-  const threads = GmailApp.search(searchQuery, 0, 10);
-
-  let processedCount = 0;
-  let label = GmailApp.getUserLabelByName("COD-Processed");
-  if (!label) {
-    label = GmailApp.createLabel("COD-Processed");
-  }
-
-  for (let t = 0; t < threads.length; t++) {
-    const thread = threads[t];
-    const messages = thread.getMessages();
-    let threadUpdated = false;
-
-    for (let m = 0; m < messages.length; m++) {
-      const message = messages[m];
-
-      // Ensure sender is specifically cod@taxydromiki.gr (ignore invoices from apostoli_timologion@taxydromiki.gr)
-      const from = message.getFrom().toLowerCase();
-      if (!from.includes("cod@taxydromiki.gr")) {
-        Logger.log("Skipping non-COD email from: " + message.getFrom());
-        continue;
-      }
-
-      const attachments = message.getAttachments();
-      for (let a = 0; a < attachments.length; a++) {
-        const attachment = attachments[a];
-        const name = attachment.getName().toLowerCase();
-
-        // Skip invoice files (ΤΠΥ) and ensure valid extension
-        if (name.includes("τπυ") || name.includes("tpy") || name.includes("timolog") || name.includes("invoice")) {
-          Logger.log("Skipping invoice attachment: " + attachment.getName());
-          continue;
-        }
-
-        if (name.endsWith(".csv") || name.endsWith(".txt") || name.endsWith(".tsv")) {
-          Logger.log("Processing COD file: " + attachment.getName());
-
-          const payload = {
-            filename: attachment.getName(),
-            sender: message.getFrom(),
-            content: Utilities.base64Encode(attachment.getBytes()),
-            encoding: "base64",
-            email_subject: message.getSubject(),
-            email_date: message.getDate().toISOString()
-          };
-
-          const options = {
-            method: "post",
-            contentType: "application/json",
-            headers: {
-              "X-GT-Secret": SECRET_KEY
-            },
-            payload: JSON.stringify(payload),
-            muteHttpExceptions: true
-          };
-
-          const response = UrlFetchApp.fetch(WEBHOOK_URL, options);
-          const code = response.getResponseCode();
-          const text = response.getContentText();
-
-          Logger.log("Response (" + code + "): " + text);
-
-          if (code === 200) {
-            const res = JSON.parse(text);
-            if (res.success) {
-              message.markRead();
-              threadUpdated = true;
-              processedCount++;
-            }
-          }
-        }
-      }
-    }
-
-    // Tag thread as processed so it is never checked again
-    if (threadUpdated) {
-      thread.addLabel(label);
-    }
-  }
-  Logger.log("Finished. Processed " + processedCount + " files.");
-}';
-							?>
-
-							<div style="position: relative; margin: 15px 0;">
-								<textarea id="gt_gas_code" readonly style="width: 100%; height: 260px; font-family: Consolas, Monaco, monospace; font-size: 12px; background: #282c34; color: #abb2bf; padding: 12px; border-radius: 4px; box-sizing: border-box;"><?php echo esc_textarea( $script_template ); ?></textarea>
-								<button type="button" class="button button-primary" style="margin-top: 6px;" onclick="navigator.clipboard.writeText(document.getElementById('gt_gas_code').value); alert('Ο κώδικας Google Apps Script αντιγράφηκε στο πρόχειρο!');">
-									<span class="dashicons dashicons-clipboard" style="vertical-align: middle; margin-top: -2px;"></span>
-									<?php esc_html_e( 'Αντιγραφή Κώδικα Google Apps Script', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-								</button>
-							</div>
-
-							<ol start="4" style="margin-left: 20px;">
-								<li><?php esc_html_e( 'Κάντε κλικ στο "Αποθήκευση" (Save) και πατήστε "Εκτέλεση" (Run) μία φορά για να δώσετε έγκριση ανάγνωσης των μηνυμάτων Gmail.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
-								<li><?php esc_html_e( 'Στο αριστερό μενού επιλέξτε "Ενάρξεις" (Triggers - εικονίδιο ρολογιού) > "Προσθήκη έναρξης" (Add Trigger):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-									<ul style="margin: 4px 0 0 15px; list-style-type: disc;">
-										<li><?php esc_html_e( 'Επιλέξτε συνάρτηση: syncGenikiCODToWooCommerce', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
-										<li><?php esc_html_e( 'Πηγή συμβάντος: Βάσει χρόνου (Time-driven)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
-										<li><?php esc_html_e( 'Τύπος: Χρονόμετρο λεπτών ή ωρών (π.χ. Κάθε 15 ή 30 λεπτά)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></li>
-									</ul>
-								</li>
-							</ol>
-						</div>
-					</details>
-
-					<div style="margin-top: 20px;">
-						<button type="submit" name="gt_cod_save_auto_settings" class="button button-primary button-hero" style="background: #005aa4; border-color: #00457d;">
-							<span class="dashicons dashicons-saved" style="vertical-align: middle; margin-top: -2px;"></span>
-							<?php esc_html_e( 'Αποθήκευση Επιλογής Μεθόδου', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-						</button>
-					</div>
-				</div>
-
-				<!-- Panel 2: Direct IMAP Mail Server -->
-				<div id="gt_panel_imap" style="<?php echo 'imap' === $auto_method ? '' : 'display:none;'; ?>">
-					<div style="background: #fafafa; border: 1px solid #ccd0d4; padding: 20px; border-radius: 4px; margin-bottom: 20px;">
-						<h3 style="margin-top: 0; color: #1d2327; font-size: 14px; border-bottom: 1px solid #e2e4e7; padding-bottom: 8px;">
-							<?php esc_html_e( 'Στοιχεία Σύνδεσης Διακομιστή IMAP', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-						</h3>
-
-						<table class="form-table" style="margin-top: 0;">
-							<tr>
-								<th scope="row" style="width: 220px;">
-									<label for="imap_host"><?php esc_html_e( 'Διακομιστής IMAP (Host):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label>
-								</th>
-								<td>
-									<input type="text" id="imap_host" name="imap_host" class="regular-text" value="<?php echo esc_attr( $imap_settings['host'] ); ?>" placeholder="imap.gmail.com" />
-									<p class="description"><?php esc_html_e( 'Για Gmail / Google Workspace: imap.gmail.com', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></p>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row">
-									<label for="imap_port"><?php esc_html_e( 'Θύρα (Port) & Κρυπτογράφηση:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label>
-								</th>
-								<td>
-									<input type="number" id="imap_port" name="imap_port" style="width: 80px;" value="<?php echo esc_attr( $imap_settings['port'] ); ?>" />
-									<select name="imap_encryption" style="margin-left: 10px;">
-										<option value="ssl" <?php selected( $imap_settings['encryption'], 'ssl' ); ?>>SSL / TLS (θύρα 993)</option>
-										<option value="tls" <?php selected( $imap_settings['encryption'], 'tls' ); ?>>STARTTLS (θύρα 143)</option>
-										<option value="none" <?php selected( $imap_settings['encryption'], 'none' ); ?>><?php esc_html_e( 'Χωρίς Κρυπτογράφηση', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
-									</select>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row">
-									<label for="imap_username"><?php esc_html_e( 'Όνομα Χρήστη / Email:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label>
-								</th>
-								<td>
-									<input type="text" id="imap_username" name="imap_username" class="regular-text" value="<?php echo esc_attr( $imap_settings['username'] ); ?>" placeholder="info@odosermou.gr" />
-								</td>
-							</tr>
-							<tr>
-								<th scope="row">
-									<label for="imap_password"><?php esc_html_e( 'Κωδικός Πρόσβασης:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label>
-								</th>
-								<td>
-									<div style="display: flex; gap: 8px; align-items: center; max-width: 350px;">
-										<input type="password" id="imap_password" name="imap_password" class="regular-text" value="<?php echo esc_attr( $imap_settings['password'] ); ?>" placeholder="<?php echo ! empty( $imap_settings['password'] ) ? '••••••••••••••••' : ''; ?>" />
-										<button type="button" class="button" onclick="var p = document.getElementById('imap_password'); p.type = (p.type === 'password') ? 'text' : 'password'; this.innerText = (p.type === 'password') ? 'Εμφάνιση' : 'Απόκρυψη';">
-											<?php esc_html_e( 'Εμφάνιση', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-										</button>
-									</div>
-									<p class="description">
-										<?php esc_html_e( 'Για Google Workspace / Gmail με 2-Step Verification, χρησιμοποιήστε έναν "Κωδικό πρόσβασης εφαρμογής" (Google App Password).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-									</p>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row">
-									<label for="imap_folder"><?php esc_html_e( 'Φάκελος Αλληλογραφίας:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label>
-								</th>
-								<td>
-									<input type="text" id="imap_folder" name="imap_folder" class="regular-text" value="<?php echo esc_attr( $imap_settings['folder'] ); ?>" placeholder="INBOX" />
-								</td>
-							</tr>
-							<tr>
-								<th scope="row">
-									<label for="imap_sender_filter"><?php esc_html_e( 'Φίλτρο Αποστολέα:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label>
-								</th>
-								<td>
-									<input type="text" id="imap_sender_filter" name="imap_sender_filter" class="regular-text" value="<?php echo esc_attr( $imap_settings['sender_filter'] ); ?>" placeholder="cod@taxydromiki.gr" />
-									<p class="description">
-										<?php esc_html_e( 'Επεξεργάζονται μόνο μηνύματα από αυτόν τον αποστολέα. Μηνύματα τιμολογίων (apostoli_timologion@taxydromiki.gr) αγνοούνται αυτόματα.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-									</p>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row">
-									<label for="imap_schedule"><?php esc_html_e( 'Συχνότητα Ελέγχου (WP-Cron):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label>
-								</th>
-								<td>
-									<select id="imap_schedule" name="imap_schedule">
-										<option value="hourly" <?php selected( $imap_settings['schedule'], 'hourly' ); ?>><?php esc_html_e( 'Κάθε ώρα (Hourly)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
-										<option value="twicedaily" <?php selected( $imap_settings['schedule'], 'twicedaily' ); ?>><?php esc_html_e( 'Δύο φορές την ημέρα (Twice Daily)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
-										<option value="daily" <?php selected( $imap_settings['schedule'], 'daily' ); ?>><?php esc_html_e( 'Μία φορά την ημέρα (Daily)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
-										<option value="manual" <?php selected( $imap_settings['schedule'], 'manual' ); ?>><?php esc_html_e( 'Μόνο Χειροκίνητος Έλεγχος (Manual)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
-									</select>
-									<?php if ( $imap_next_cron && 'manual' !== $imap_settings['schedule'] ) : ?>
-										<span style="margin-left: 10px; font-size: 12px; color: #2271b1;">
-											<span class="dashicons dashicons-clock" style="vertical-align: middle; font-size: 16px;"></span>
-											<?php printf( esc_html__( 'Επόμενη προγραμματισμένη εκτέλεση: %s', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), esc_html( date_i18n( 'd/m/Y H:i', $imap_next_cron ) ) ); ?>
-										</span>
-									<?php endif; ?>
-								</td>
-							</tr>
-						</table>
-
-						<div style="margin-top: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-							<button type="submit" name="gt_cod_save_auto_settings" class="button button-primary button-hero" style="background: #005aa4; border-color: #00457d;">
-								<span class="dashicons dashicons-saved" style="vertical-align: middle; margin-top: -2px;"></span>
-								<?php esc_html_e( 'Αποθήκευση Ρυθμίσεων IMAP', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-							</button>
-
-							<button type="submit" name="gt_cod_test_imap" class="button button-secondary">
-								<span class="dashicons dashicons-admin-plugins" style="vertical-align: middle; margin-top: -2px;"></span>
-								<?php esc_html_e( 'Δοκιμή Σύνδεσης IMAP', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-							</button>
-
-							<button type="submit" name="gt_cod_check_imap_now" class="button button-secondary" onclick="return confirm('Θέλετε να ελέγξετε άμεσα το γραμματοκιβώτιο για νέα αρχεία εκκαθάρισης;');">
-								<span class="dashicons dashicons-update" style="vertical-align: middle; margin-top: -2px;"></span>
-								<?php esc_html_e( 'Έλεγχος & Επεξεργασία Τώρα', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-							</button>
-						</div>
-					</div>
-
-					<!-- Last IMAP Execution Log -->
-					<div style="padding: 12px 16px; border-radius: 4px; margin-bottom: 20px; <?php echo $last_imap_log ? 'background: #e7f5ea; border-left: 4px solid #46b450;' : 'background: #f6f7f7; border-left: 4px solid #b4b9be;'; ?>">
-						<strong style="font-size: 13px;"><?php esc_html_e( 'Κατάσταση Τελευταίου Ελέγχου IMAP:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></strong>
-						<?php if ( $last_imap_log ) : ?>
-							<p style="margin: 5px 0 0 0; font-size: 13px;">
-								<?php
-								printf(
-									esc_html__( 'Ημερομηνία: %1$s | Επεξεργάστηκαν: %2$d μηνύματα (%3$d αρχεία) | Ενημερώθηκαν: %4$d παραγγελίες (Σύνολο: %5$s €).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
-									esc_html( $last_imap_log['timestamp'] ),
-									(int) $last_imap_log['messages_processed'],
-									(int) $last_imap_log['files_processed'],
-									(int) $last_imap_log['updated_orders'],
-									esc_html( number_format( (float) $last_imap_log['total_amount'], 2, ',', '.' ) )
-								);
-								?>
-								<?php if ( ! empty( $last_imap_log['errors'] ) && is_array( $last_imap_log['errors'] ) ) : ?>
-									<br><span style="color: #d63638; font-size: 12px;"><?php esc_html_e( 'Σφάλματα: ', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?><?php echo esc_html( implode( ' | ', $last_imap_log['errors'] ) ); ?></span>
-								<?php endif; ?>
-							</p>
-						<?php else : ?>
-							<p style="margin: 5px 0 0 0; font-size: 13px; color: #666;">
-								<?php esc_html_e( 'Δεν έχει καταγραφεί ακόμα εκτέλεση ελέγχου IMAP.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-							</p>
+						<?php if ( ! empty( $latest_clearance['already_paid'] ) ) : ?>
+						<tr>
+							<td style="font-weight: 600;"><?php esc_html_e( 'Ήδη εξοφλημένες:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></td>
+							<td><?php echo (int) $latest_clearance['already_paid']; ?></td>
+						</tr>
 						<?php endif; ?>
-					</div>
-
-					<div style="background: #e7f3fe; border-left: 4px solid #2271b1; padding: 12px 16px; border-radius: 2px;">
-						<p style="margin: 0; font-size: 13px; line-height: 1.5;">
-							<strong><?php esc_html_e( 'Σημείωση για λογαριασμούς Google Workspace / Gmail:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></strong><br>
-							<?php esc_html_e( 'Εάν έχετε ενεργοποιημένη την επαλήθευση 2 βημάτων (2-Factor Authentication), η Google απαιτεί τη χρήση "Κωδικού πρόσβασης εφαρμογής" (App Password) αντί για τον κύριο κωδικό σας. Μπορείτε να δημιουργήσετε έναν από το λογαριασμό σας Google > Ασφάλεια > Επαλήθευση σε 2 βήματα > Κωδικοί πρόσβασης εφαρμογών.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-						</p>
-					</div>
+					</tbody>
+				</table>
+			<?php else : ?>
+				<div style="padding: 15px; background: #f6f7f7; border-left: 4px solid #b4b9be; margin-top: 15px; border-radius: 3px;">
+					<?php esc_html_e( 'Δεν έχει καταγραφεί ακόμα προηγούμενη εκκαθάριση αντικαταβολών.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 				</div>
+			<?php endif; ?>
 
-				<!-- Panel 3: Disabled -->
-				<div id="gt_panel_disabled" style="<?php echo 'disabled' === $auto_method ? '' : 'display:none;'; ?>">
-					<p style="font-size: 13px; color: #666; font-style: italic; margin-bottom: 15px;">
-						<?php esc_html_e( 'Η αυτόματη εισαγωγή είναι απενεργοποιημένη. Μπορείτε να φορτώνετε τα αρχεία εκκαθάρισης αντικαταβολών χειροκίνητα όποτε επιθυμείτε από την παραπάνω φόρμα.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-					</p>
-					<button type="submit" name="gt_cod_save_auto_settings" class="button button-primary">
-						<?php esc_html_e( 'Αποθήκευση Επιλογής', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-					</button>
-				</div>
-			</form>
-
-			<!-- Form for Secret Key Regeneration -->
-			<form method="POST" action="<?php echo esc_url( $cod_import_url ); ?>" id="gt_regen_secret_form" style="display:none;">
-				<?php wp_nonce_field( 'gt_cod_regen_secret_nonce', 'gt_cod_regen_secret_nonce_field' ); ?>
-			</form>
+			<!-- Hub Automation Navigation Box -->
+			<div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee;">
+				<h3 style="margin: 0 0 8px 0; font-size: 14px;">
+					<span class="dashicons dashicons-admin-generic" style="vertical-align: middle; color: #666;"></span>
+					<?php esc_html_e( 'Αυτοματοποίηση Εκκαθαρίσεων (Hub)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+				</h3>
+				<p style="font-size: 12px; color: #666; margin: 0 0 12px 0; line-height: 1.5;">
+					<?php esc_html_e( 'Θέλετε να λαμβάνετε και να ενημερώνετε αυτόματα τις αντικαταβολές μόλις φτάνει το email από τη Γενική Ταχυδρομική χωρίς χειροκίνητα αρχεία;', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+				</p>
+				<a href="<?php echo esc_url( $settings_url ); ?>" class="button button-secondary">
+					<span class="dashicons dashicons-external" style="vertical-align: middle; margin-right: 3px;"></span>
+					<?php esc_html_e( 'Μετάβαση στο Hub Ρυθμίσεων & Αυτοματισμού', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+				</a>
+			</div>
 		</div>
-
-		<script>
-		function gtToggleAutoMethod(method) {
-			var pWebhook = document.getElementById('gt_panel_webhook');
-			var pImap = document.getElementById('gt_panel_imap');
-			var pDisabled = document.getElementById('gt_panel_disabled');
-			if (pWebhook) pWebhook.style.display = (method === 'webhook') ? 'block' : 'none';
-			if (pImap) pImap.style.display = (method === 'imap') ? 'block' : 'none';
-			if (pDisabled) pDisabled.style.display = (method === 'disabled') ? 'block' : 'none';
-		}
-		</script>
+	</div>
 
 	<!-- Step 2: Preview & Confirmation -->
 	<?php elseif ( 'preview' === $action_step ) : ?>
@@ -717,6 +412,7 @@ $invoice_import_url = admin_url( 'admin.php?page=gtvfw_invoice_import' );
 		<form method="POST" action="<?php echo esc_url( $cod_import_url ); ?>" id="gt_cod_preview_form">
 			<?php wp_nonce_field( 'gt_cod_confirm_nonce', 'gt_cod_confirm_nonce_field' ); ?>
 			<input type="hidden" name="records_payload" value="<?php echo esc_attr( wp_json_encode( $records ) ); ?>" />
+			<input type="hidden" name="gt_cod_filename" value="<?php echo esc_attr( $uploaded_filename ?? '' ); ?>" />
 
 			<div style="background: #fff; padding: 15px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
 				<div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">

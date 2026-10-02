@@ -129,8 +129,8 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 
 		add_submenu_page(
 			'gtvfw_settings',
-			'Ρυθμίσεις',
-			'Ρυθμίσεις',
+			'Ρυθμίσεις & Αυτοματισμός (Hub)',
+			'Ρυθμίσεις & Αυτοματισμός',
 			'administrator',
 			'gtvfw_settings',
 			array( $this, 'displayPluginAdminSettings' )
@@ -138,8 +138,8 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 
 		add_submenu_page(
 			'gtvfw_settings',
-			'Εισαγωγή Αντικαταβολών',
-			'Εισαγωγή Αντικαταβολών',
+			'Αντικαταβολές (COD)',
+			'Αντικαταβολές (COD)',
 			'administrator',
 			'gtvfw_cod_import',
 			array( $this, 'displayPluginCodImport' )
@@ -147,8 +147,8 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 
 		add_submenu_page(
 			'gtvfw_settings',
-			'Τιμολόγια & Κόστη ΓΤ',
-			'Τιμολόγια & Κόστη',
+			'Τιμολόγια & Έλεγχος Κόστους (P&L)',
+			'Τιμολόγια & Έλεγχος Κόστους',
 			'administrator',
 			'gtvfw_invoice_import',
 			array( $this, 'displayPluginInvoiceImport' )

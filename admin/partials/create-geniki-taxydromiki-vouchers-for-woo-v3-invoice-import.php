@@ -63,6 +63,20 @@ if ( isset( $_POST['gt_invoice_confirm_import'] ) && check_admin_referer( 'gt_in
 		$diff_total = $total_client - $total_courier;
 		$diff_sign  = $diff_total >= 0 ? '+' : '';
 
+		update_option( 'gtvfw_invoice_last_log', array(
+			'timestamp'        => current_time( 'mysql' ),
+			'source'           => 'manual',
+			'filename'         => isset( $_POST['gt_invoice_filename'] ) ? sanitize_file_name( $_POST['gt_invoice_filename'] ) : 'manual_invoice.csv',
+			'total_rows'       => count( $all_records ),
+			'updated_orders'   => $updated_count,
+			'already_imported' => 0,
+			'not_found'        => 0,
+			'errors'           => $skipped_count,
+			'total_courier'    => $total_courier,
+			'total_client'     => $total_client,
+			'net_difference'   => $diff_total,
+		) );
+
 		$notice = array(
 			'type'    => 'success',
 			'message' => sprintf(
@@ -90,8 +104,9 @@ elseif ( isset( $_POST['gt_invoice_upload_file'] ) && check_admin_referer( 'gt_i
 			'message' => __( 'Παρακαλούμε επιλέξτε ένα έγκυρο αρχείο CSV τιμολογίου.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
 		);
 	} else {
-		$file_tmp = $_FILES['invoice_csv_file']['tmp_name'];
-		$content  = GT_Invoice_Importer::read_file_content( $file_tmp );
+		$file_tmp          = $_FILES['invoice_csv_file']['tmp_name'];
+		$uploaded_filename = sanitize_file_name( $_FILES['invoice_csv_file']['name'] );
+		$content           = GT_Invoice_Importer::read_file_content( $file_tmp );
 
 		if ( is_wp_error( $content ) ) {
 			$notice = array(
@@ -132,13 +147,13 @@ $last_invoice_log   = get_option( 'gtvfw_invoice_last_log' );
 	<!-- Tab Navigation -->
 	<nav class="nav-tab-wrapper wp-clearfix" style="margin-bottom: 20px;">
 		<a href="<?php echo esc_url( $settings_url ); ?>" class="nav-tab">
-			<?php esc_html_e( 'Ρυθμίσεις Σύνδεσης', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+			<?php esc_html_e( 'Ρυθμίσεις & Αυτοματισμός (Hub)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 		</a>
 		<a href="<?php echo esc_url( $cod_import_url ); ?>" class="nav-tab">
-			<?php esc_html_e( 'Εισαγωγή Πληρωμών Αντικαταβολής (COD)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+			<?php esc_html_e( 'Αντικαταβολές (COD)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 		</a>
 		<a href="<?php echo esc_url( $invoice_import_url ); ?>" class="nav-tab nav-tab-active">
-			<?php esc_html_e( 'Τιμολόγια & Έλεγχος Κόστους', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+			<?php esc_html_e( 'Τιμολόγια & Έλεγχος Κόστους (P&L)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 		</a>
 	</nav>
 
@@ -243,87 +258,19 @@ $last_invoice_log   = get_option( 'gtvfw_invoice_last_log' );
 					</div>
 				<?php endif; ?>
 
-				<!-- Automated Sync Info Box -->
+				<!-- Hub Automation Navigation Box -->
 				<div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee;">
 					<h3 style="margin: 0 0 8px 0; font-size: 14px;">
 						<span class="dashicons dashicons-admin-generic" style="vertical-align: middle; color: #666;"></span>
-						<?php esc_html_e( 'Αυτοματοποίηση μέσω Email Webhook', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+						<?php esc_html_e( 'Αυτοματοποίηση μέσω Email (Hub)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 					</h3>
-					<p style="font-size: 12px; color: #666; margin: 0 0 10px 0;">
-						<?php esc_html_e( 'Μπορείτε να στέλνετε αυτόματα τα αρχεία τιμολογίων από το Gmail/Google Apps Script στο endpoint του καταστήματος.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+					<p style="font-size: 12px; color: #666; margin: 0 0 12px 0; line-height: 1.5;">
+						<?php esc_html_e( 'Μπορείτε να λαμβάνετε και να καταχωρείτε αυτόματα τα έξοδα τιμολογίων απευθείας από το Gmail μέσω του Ενιαίου Google Apps Script.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 					</p>
-					<button type="button" class="button button-small" onclick="var el = document.getElementById('gt-invoice-script-box'); el.style.display = (el.style.display === 'none' ? 'block' : 'none');">
-						<?php esc_html_e( 'Εμφάνιση Κώδικα Google Apps Script', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-					</button>
-
-					<div id="gt-invoice-script-box" style="display: none; margin-top: 12px;">
-						<?php
-						$gas_script = 'function syncGenikiInvoicesToWooCommerce() {
-  const WEBHOOK_URL = "' . esc_url_raw( $webhook_url ) . '";
-  const SECRET_KEY  = "' . esc_js( $webhook_secret ) . '";
-
-  // Search emails from apostoli_timologion@taxydromiki.gr with attachments
-  const searchQuery = "from:apostoli_timologion@taxydromiki.gr has:attachment -label:Invoice-Processed";
-  const threads = GmailApp.search(searchQuery, 0, 5);
-
-  let label = GmailApp.getUserLabelByName("Invoice-Processed");
-  if (!label) {
-    label = GmailApp.createLabel("Invoice-Processed");
-  }
-
-  for (let t = 0; t < threads.length; t++) {
-    const thread = threads[t];
-    const messages = thread.getMessages();
-    let threadUpdated = false;
-
-    for (let m = 0; m < messages.length; m++) {
-      const message = messages[m];
-      const attachments = message.getAttachments();
-
-      for (let a = 0; a < attachments.length; a++) {
-        const attachment = attachments[a];
-        const name = attachment.getName().toLowerCase();
-
-        if (name.endsWith(".csv") || name.endsWith(".txt")) {
-          Logger.log("Processing Invoice file: " + attachment.getName());
-
-          const payload = {
-            filename: attachment.getName(),
-            sender: message.getFrom(),
-            content: Utilities.base64Encode(attachment.getBytes()),
-            encoding: "base64",
-            email_subject: message.getSubject(),
-            email_date: message.getDate().toISOString()
-          };
-
-          const options = {
-            method: "post",
-            contentType: "application/json",
-            headers: {
-              "X-GT-Secret": SECRET_KEY
-            },
-            payload: JSON.stringify(payload),
-            muteHttpExceptions: true
-          };
-
-          const response = UrlFetchApp.fetch(WEBHOOK_URL, options);
-          Logger.log("Response: " + response.getContentText());
-          threadUpdated = true;
-        }
-      }
-    }
-
-    if (threadUpdated) {
-      thread.addLabel(label);
-    }
-  }
-}';
-						?>
-						<textarea readonly rows="8" style="width: 100%; font-family: monospace; font-size: 11px; background: #f0f0f1; border-radius: 4px;"><?php echo esc_textarea( $gas_script ); ?></textarea>
-						<button type="button" class="button button-small" style="margin-top: 5px;" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); alert('Ο κώδικας αντιγράφηκε!');">
-							<?php esc_html_e( 'Αντιγραφή Κώδικα', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
-						</button>
-					</div>
+					<a href="<?php echo esc_url( $settings_url ); ?>" class="button button-secondary">
+						<span class="dashicons dashicons-external" style="vertical-align: middle; margin-right: 3px;"></span>
+						<?php esc_html_e( 'Μετάβαση στο Hub Ρυθμίσεων & Αυτοματισμού', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+					</a>
 				</div>
 
 			</div>
@@ -391,6 +338,7 @@ $last_invoice_log   = get_option( 'gtvfw_invoice_last_log' );
 		<form method="POST" action="<?php echo esc_url( $invoice_import_url ); ?>">
 			<?php wp_nonce_field( 'gt_invoice_confirm_nonce', 'gt_invoice_confirm_nonce_field' ); ?>
 			<input type="hidden" name="records_payload" value="<?php echo esc_attr( wp_json_encode( $records ) ); ?>" />
+			<input type="hidden" name="gt_invoice_filename" value="<?php echo esc_attr( $uploaded_filename ?? '' ); ?>" />
 
 			<div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
 				<div>
