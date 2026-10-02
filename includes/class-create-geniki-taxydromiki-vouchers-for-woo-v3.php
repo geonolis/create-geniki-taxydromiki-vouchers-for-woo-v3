@@ -141,6 +141,11 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3 {
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-gt-cod-importer.php';
 
+		/**
+		 * The class that handles courier invoice cost imports.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-gt-invoice-importer.php';
+
 		$this->loader = new Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Loader();
 
 	}

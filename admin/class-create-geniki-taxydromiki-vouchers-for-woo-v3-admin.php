@@ -144,6 +144,15 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 			'gtvfw_cod_import',
 			array( $this, 'displayPluginCodImport' )
 		);
+
+		add_submenu_page(
+			'gtvfw_settings',
+			'Τιμολόγια & Κόστη ΓΤ',
+			'Τιμολόγια & Κόστη',
+			'administrator',
+			'gtvfw_invoice_import',
+			array( $this, 'displayPluginInvoiceImport' )
+		);
 	}
 
 	public function displayPluginAdminSettings() {
@@ -158,6 +167,10 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 
 	public function displayPluginCodImport() {
 		require_once 'partials/'.$this->plugin_name.'-cod-import.php';
+	}
+
+	public function displayPluginInvoiceImport() {
+		require_once 'partials/'.$this->plugin_name.'-invoice-import.php';
 	}
 
 	public function pluginNameSettingsMessages($error_message){
@@ -477,6 +490,40 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 				$amt_str  = $paid_amt ? ' (' . number_format( (float) $paid_amt, 2, ',', '.' ) . '€)' : '';
 				echo '<div style="margin-top:4px;"><span style="display:inline-block; padding:2px 6px; font-size:11px; font-weight:600; background:#d4edda; color:#155724; border-radius:3px;" title="' . esc_attr__( 'Η αντικαταβολή έχει εξοφληθεί', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) . '">✓ Εξόφληση Α/Κ' . esc_html( $amt_str ) . '</span></div>';
 			}
+
+			if ( $order && '' !== $order->get_meta( 'gt_courier_shipping_cost' ) ) {
+				$courier_cost = (float) $order->get_meta( 'gt_courier_shipping_cost' );
+				$client_ship  = (float) $order->get_shipping_total();
+				$client_cod   = 0.0;
+				foreach ( $order->get_fees() as $fee ) {
+					$fee_name = mb_strtolower( $fee->get_name(), 'UTF-8' );
+					if ( strpos( $fee_name, 'αντικαταβολ' ) !== false || strpos( $fee_name, 'cod' ) !== false ) {
+						$client_cod += (float) $fee->get_total();
+					}
+				}
+				$client_total = $client_ship + $client_cod;
+				$diff         = $client_total - $courier_cost;
+				$is_profit    = ( $diff >= 0 );
+				$diff_sign    = $is_profit ? '+' : '';
+
+				$bg_color     = $is_profit ? '#e8f5e9' : '#ffebee';
+				$text_color   = $is_profit ? '#2e7d32' : '#c62828';
+				$border_color = $is_profit ? '#a5d6a7' : '#ef9a9a';
+
+				$tooltip = sprintf(
+					__( 'Τιμολόγιο ΓΤ: %s€ | Χρέωση Πελάτη: %s€ (Μεταφορικά: %s€ + Α/Κ: %s€) | Διαφορά: %s%s€', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
+					number_format( $courier_cost, 2, ',', '.' ),
+					number_format( $client_total, 2, ',', '.' ),
+					number_format( $client_ship, 2, ',', '.' ),
+					number_format( $client_cod, 2, ',', '.' ),
+					$diff_sign,
+					number_format( $diff, 2, ',', '.' )
+				);
+
+				echo '<div style="margin-top:4px;"><span style="display:inline-block; padding:2px 6px; font-size:11px; font-weight:600; background:' . esc_attr( $bg_color ) . '; color:' . esc_attr( $text_color ) . '; border:1px solid ' . esc_attr( $border_color ) . '; border-radius:3px;" title="' . esc_attr( $tooltip ) . '">';
+				echo esc_html( sprintf( 'Κόστος ΓΤ: %s€ (%s%s€)', number_format( $courier_cost, 2, ',', '.' ), $diff_sign, number_format( $diff, 2, ',', '.' ) ) );
+				echo '</span></div>';
+			}
     	}	
 	}
 
@@ -556,6 +603,91 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 				echo '<div style="margin-top:12px; padding:10px 12px; background:#fff3cd; color:#856404; border-left:4px solid #ffc107; border-radius:3px; font-size:13px;">';
 				echo '<strong>' . esc_html__( 'Πληρωμή Αντικαταβολής (ΓΤ):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) . '</strong> ';
 				echo esc_html__( 'Εκκρεμεί εξόφληση από ΓΤ', 'create-geniki-taxydromiki-vouchers-for-woo-v3' );
+				echo '</div>';
+			}
+
+			// Display Courier Invoice Shipping Cost & Comparison if present
+			$courier_shipping_cost = $order->get_meta( 'gt_courier_shipping_cost' );
+			if ( '' !== $courier_shipping_cost ) {
+				$courier_cost   = (float) $courier_shipping_cost;
+				$base_cost      = (float) $order->get_meta( 'gt_courier_base_cost' );
+				$cod_cost       = (float) $order->get_meta( 'gt_courier_cod_fee' );
+				$invoice_no     = $order->get_meta( 'gt_courier_invoice_no' );
+				$invoice_date   = $order->get_meta( 'gt_courier_invoice_date' );
+				$weight         = $order->get_meta( 'gt_courier_weight' );
+				$extra_services = (array) $order->get_meta( 'gt_courier_extra_services' );
+
+				$client_ship = (float) $order->get_shipping_total();
+				$client_cod  = 0.0;
+				foreach ( $order->get_fees() as $fee ) {
+					$fee_name = mb_strtolower( $fee->get_name(), 'UTF-8' );
+					if ( strpos( $fee_name, 'αντικαταβολ' ) !== false || strpos( $fee_name, 'cod' ) !== false ) {
+						$client_cod += (float) $fee->get_total();
+					}
+				}
+				$client_total = $client_ship + $client_cod;
+				$diff         = $client_total - $courier_cost;
+				$is_profit    = ( $diff >= 0 );
+				$diff_sign    = $is_profit ? '+' : '';
+
+				$card_border = $is_profit ? '#28a745' : '#dc3545';
+				$diff_bg     = $is_profit ? '#d4edda' : '#f8d7da';
+				$diff_fg     = $is_profit ? '#155724' : '#721c24';
+
+				echo '<div style="margin-top:14px; padding:12px; background:#fafafa; border:1px solid #ccd0d4; border-left:4px solid ' . esc_attr( $card_border ) . '; border-radius:3px; font-size:12px; line-height:1.6;">';
+				echo '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid #eee; padding-bottom:6px;">';
+				echo '<strong style="font-size:13px; color:#23282d;">' . esc_html__( 'Οικονομικός Έλεγχος Αποστολής (Τιμολόγιο ΓΤ)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) . '</strong>';
+				if ( $invoice_no ) {
+					echo '<span style="color:#666; font-size:11px;">' . esc_html__( 'Τιμ: ', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) . esc_html( $invoice_no ) . ( $invoice_date ? ' (' . esc_html( $invoice_date ) . ')' : '' ) . '</span>';
+				}
+				echo '</div>';
+
+				echo '<table style="width:100%; border-collapse:collapse; margin-bottom:8px;">';
+				echo '<tr>';
+				echo '<td style="padding:3px 0; color:#555;">' . esc_html__( 'Χρέωση Πελάτη (Καθαρή):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) . '</td>';
+				echo '<td style="padding:3px 0; text-align:right; font-weight:600;">' . esc_html( number_format( $client_total, 2, ',', '.' ) ) . ' €';
+				if ( $client_cod > 0 ) {
+					echo ' <span style="font-weight:normal; font-size:11px; color:#777;">(Μεταφ: ' . esc_html( number_format( $client_ship, 2, ',', '.' ) ) . '€ + Α/Κ: ' . esc_html( number_format( $client_cod, 2, ',', '.' ) ) . '€)</span>';
+				}
+				echo '</td>';
+				echo '</tr>';
+
+				echo '<tr>';
+				echo '<td style="padding:3px 0; color:#555;">' . esc_html__( 'Κόστος Γεν. Ταχυδρομικής (Καθαρό):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) . '</td>';
+				echo '<td style="padding:3px 0; text-align:right; font-weight:600;">' . esc_html( number_format( $courier_cost, 2, ',', '.' ) ) . ' €';
+				echo ' <span style="font-weight:normal; font-size:11px; color:#777;">(Βασικό: ' . esc_html( number_format( $base_cost, 2, ',', '.' ) ) . '€)</span>';
+				echo '</td>';
+				echo '</tr>';
+
+				if ( ! empty( $extra_services ) ) {
+					echo '<tr>';
+					echo '<td style="padding:3px 0; color:#555; vertical-align:top;">' . esc_html__( 'Πρόσθετες Χρεώσεις ΓΤ:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) . '</td>';
+					echo '<td style="padding:3px 0; text-align:right;">';
+					foreach ( $extra_services as $code => $amt ) {
+						$label = isset( GT_Invoice_Importer::SERVICE_LABELS[ $code ] ) ? GT_Invoice_Importer::SERVICE_LABELS[ $code ] : $code;
+						echo '<span style="display:inline-block; margin-left:4px; padding:1px 5px; font-size:10px; background:#e2e4e7; border-radius:3px; color:#333;" title="' . esc_attr( $label ) . '">';
+						echo esc_html( $code . ': ' . number_format( (float) $amt, 2, ',', '.' ) . '€' );
+						echo '</span>';
+					}
+					echo '</td>';
+					echo '</tr>';
+				}
+
+				if ( $weight > 0 ) {
+					echo '<tr>';
+					echo '<td style="padding:3px 0; color:#777; font-size:11px;">' . esc_html__( 'Βάρος αποστολής τιμολογίου:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) . '</td>';
+					echo '<td style="padding:3px 0; text-align:right; font-size:11px; color:#777;">' . esc_html( number_format( (float) $weight, 2, ',', '.' ) ) . ' kg</td>';
+					echo '</tr>';
+				}
+
+				echo '</table>';
+
+				echo '<div style="padding:6px 10px; background:' . esc_attr( $diff_bg ) . '; color:' . esc_attr( $diff_fg ) . '; border-radius:3px; font-weight:600; text-align:center;">';
+				echo esc_html__( 'Διαφορά Μεταφορικών: ', 'create-geniki-taxydromiki-vouchers-for-woo-v3' );
+				echo esc_html( $diff_sign . number_format( $diff, 2, ',', '.' ) . ' €' );
+				echo ' (' . ( $is_profit ? esc_html__( 'Κέρδος / Κάλυψη', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) : esc_html__( 'Επιπλέον Κόστος Καταστήματος', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) ) . ')';
+				echo '</div>';
+
 				echo '</div>';
 			}
 		}
@@ -698,12 +830,18 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 	}
 
 	/**
-	 * Register REST API route for automated COD webhook.
+	 * Register REST API route for automated COD and Invoice webhooks.
 	 */
 	public function register_rest_routes() {
 		register_rest_route( 'gtvfw/v1', '/cod-webhook', array(
 			'methods'             => WP_REST_Server::CREATABLE, // POST
 			'callback'            => array( $this, 'handle_cod_webhook' ),
+			'permission_callback' => array( $this, 'check_cod_webhook_permissions' ),
+		) );
+
+		register_rest_route( 'gtvfw/v1', '/invoice-webhook', array(
+			'methods'             => WP_REST_Server::CREATABLE, // POST
+			'callback'            => array( $this, 'handle_invoice_webhook' ),
 			'permission_callback' => array( $this, 'check_cod_webhook_permissions' ),
 		) );
 	}
@@ -745,7 +883,7 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 	}
 
 	/**
-	 * Handle incoming COD file payload from Google Apps Script / webhook.
+	 * Handle incoming COD or Invoice file payload from Google Apps Script / webhook.
 	 *
 	 * @param WP_REST_Request $request
 	 * @return WP_REST_Response|WP_Error
@@ -766,10 +904,13 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 				$filename = sanitize_file_name( $json['filename'] );
 			}
 		}
-		// 2. Multipart file upload ($_FILES['cod_file'])
+		// 2. Multipart file upload ($_FILES['cod_file'] or $_FILES['invoice_file'])
 		elseif ( ! empty( $_FILES['cod_file']['tmp_name'] ) ) {
 			$raw_content = file_get_contents( $_FILES['cod_file']['tmp_name'] );
 			$filename    = sanitize_file_name( $_FILES['cod_file']['name'] );
+		} elseif ( ! empty( $_FILES['invoice_file']['tmp_name'] ) ) {
+			$raw_content = file_get_contents( $_FILES['invoice_file']['tmp_name'] );
+			$filename    = sanitize_file_name( $_FILES['invoice_file']['name'] );
 		}
 		// 3. Raw body text
 		elseif ( ! empty( $request->get_body() ) ) {
@@ -785,17 +926,43 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 			);
 		}
 
-		// Reject invoice emails/senders
+		// Intelligent Routing: Check if this file is an Invoice (ΤΠΥ) rather than COD settlement
 		$sender = ! empty( $json['sender'] ) ? sanitize_text_field( $json['sender'] ) : sanitize_text_field( $request->get_param( 'sender' ) );
-		if ( ! empty( $sender ) ) {
-			$sender_lower = strtolower( $sender );
-			if ( strpos( $sender_lower, 'apostoli_timologion' ) !== false ) {
-				return new WP_Error(
-					'gt_invoice_sender_rejected',
-					__( 'Τα μηνύματα από apostoli_timologion@taxydromiki.gr αφορούν τιμολόγια (ΤΠΥ) και δεν επεξεργάζονται ως αντικαταβολές.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
-					array( 'status' => 400 )
-				);
+		$is_invoice = false;
+
+		if ( ! empty( $sender ) && strpos( strtolower( $sender ), 'apostoli_timologion' ) !== false ) {
+			$is_invoice = true;
+		}
+
+		if ( preg_match( '/^(ΤΠΥ|TPY)/iu', $filename ) || strpos( strtolower( $filename ), 'timolog' ) !== false ) {
+			$is_invoice = true;
+		}
+
+		$snippet = substr( $raw_content, 0, 500 );
+		if ( strpos( $snippet, 'ΣΥΝΟΛ.ΑΞΙΑ' ) !== false || strpos( $snippet, 'ΠΡΟΣΘ.1' ) !== false || strpos( $snippet, 'ΒΑΣΙΚΗ ΧΡΕΩΣΗ' ) !== false || strpos( $snippet, 'ΑΡ.ΤΙΜΟΛ' ) !== false ) {
+			$is_invoice = true;
+		}
+
+		if ( $is_invoice ) {
+			$result = GT_Invoice_Importer::process_raw_content( $raw_content, $filename );
+			if ( is_wp_error( $result ) ) {
+				return $result;
 			}
+			return rest_ensure_response( array(
+				'success'          => true,
+				'type'             => 'invoice',
+				'message'          => sprintf( __( 'Ενημερώθηκαν επιτυχώς %d παραγγελίες από το τιμολόγιο.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), $result['updated_orders'] ),
+				'filename'         => $result['filename'],
+				'total_rows'       => $result['total_rows'],
+				'updated_orders'   => $result['updated_orders'],
+				'already_imported' => $result['already_imported'],
+				'not_found'        => $result['not_found'],
+				'errors'           => $result['errors'],
+				'total_courier'    => $result['total_courier'],
+				'total_client'     => $result['total_client'],
+				'net_difference'   => $result['net_difference'],
+				'timestamp'        => $result['timestamp'],
+			) );
 		}
 
 		$result = GT_COD_Importer::process_raw_content( $raw_content, $filename );
@@ -806,6 +973,7 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 
 		return rest_ensure_response( array(
 			'success'        => true,
+			'type'           => 'cod',
 			'message'        => sprintf( __( 'Ενημερώθηκαν επιτυχώς %d παραγγελίες.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), $result['updated_orders'] ),
 			'filename'       => $result['filename'],
 			'total_rows'     => $result['total_rows'],
@@ -815,6 +983,64 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 			'errors'         => $result['errors'],
 			'total_amount'   => $result['total_amount'],
 			'timestamp'      => $result['timestamp'],
+		) );
+	}
+
+	/**
+	 * Handle incoming Invoice payload specifically via /invoice-webhook endpoint.
+	 *
+	 * @param WP_REST_Request $request
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function handle_invoice_webhook( WP_REST_Request $request ) {
+		$raw_content = '';
+		$filename    = 'invoice_attachment.csv';
+
+		$json = $request->get_json_params();
+		if ( ! empty( $json['content'] ) ) {
+			if ( ! empty( $json['encoding'] ) && 'base64' === strtolower( $json['encoding'] ) ) {
+				$raw_content = base64_decode( $json['content'] );
+			} else {
+				$raw_content = (string) $json['content'];
+			}
+			if ( ! empty( $json['filename'] ) ) {
+				$filename = sanitize_file_name( $json['filename'] );
+			}
+		} elseif ( ! empty( $_FILES['invoice_file']['tmp_name'] ) ) {
+			$raw_content = file_get_contents( $_FILES['invoice_file']['tmp_name'] );
+			$filename    = sanitize_file_name( $_FILES['invoice_file']['name'] );
+		} elseif ( ! empty( $request->get_body() ) ) {
+			$raw_content = $request->get_body();
+			$filename    = $request->get_param( 'filename' ) ? sanitize_file_name( $request->get_param( 'filename' ) ) : 'raw_body.csv';
+		}
+
+		if ( empty( $raw_content ) ) {
+			return new WP_Error(
+				'gt_empty_payload',
+				__( 'Δεν στάλθηκαν δεδομένα αρχείου τιμολογίου (κενό payload).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$result = GT_Invoice_Importer::process_raw_content( $raw_content, $filename );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return rest_ensure_response( array(
+			'success'          => true,
+			'type'             => 'invoice',
+			'message'          => sprintf( __( 'Ενημερώθηκαν επιτυχώς %d παραγγελίες από το τιμολόγιο.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), $result['updated_orders'] ),
+			'filename'         => $result['filename'],
+			'total_rows'       => $result['total_rows'],
+			'updated_orders'   => $result['updated_orders'],
+			'already_imported' => $result['already_imported'],
+			'not_found'        => $result['not_found'],
+			'errors'           => $result['errors'],
+			'total_courier'    => $result['total_courier'],
+			'total_client'     => $result['total_client'],
+			'net_difference'   => $result['net_difference'],
+			'timestamp'        => $result['timestamp'],
 		) );
 	}
 

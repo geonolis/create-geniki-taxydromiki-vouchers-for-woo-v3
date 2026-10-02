@@ -195,8 +195,9 @@ elseif ( isset( $_POST['gt_cod_upload_file'] ) && check_admin_referer( 'gt_cod_u
 	}
 }
 
-$settings_url   = admin_url( 'admin.php?page=gtvfw_settings' );
-$cod_import_url = admin_url( 'admin.php?page=gtvfw_cod_import' );
+$settings_url       = admin_url( 'admin.php?page=gtvfw_settings' );
+$cod_import_url     = admin_url( 'admin.php?page=gtvfw_cod_import' );
+$invoice_import_url = admin_url( 'admin.php?page=gtvfw_invoice_import' );
 ?>
 
 <div class="wrap gtvfw-admin-wrapper">
@@ -209,6 +210,9 @@ $cod_import_url = admin_url( 'admin.php?page=gtvfw_cod_import' );
 		</a>
 		<a href="<?php echo esc_url( $cod_import_url ); ?>" class="nav-tab nav-tab-active">
 			<?php esc_html_e( 'Εισαγωγή Πληρωμών Αντικαταβολής (COD)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
+		</a>
+		<a href="<?php echo esc_url( $invoice_import_url ); ?>" class="nav-tab">
+			<?php esc_html_e( 'Τιμολόγια & Έλεγχος Κόστους', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 		</a>
 	</nav>
 
