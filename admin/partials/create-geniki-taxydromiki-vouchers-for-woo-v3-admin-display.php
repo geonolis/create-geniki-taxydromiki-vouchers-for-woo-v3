@@ -142,10 +142,10 @@ $imap_next_cron     = wp_next_scheduled( 'gtvfw_cod_imap_cron_check' );
 		<?php wp_nonce_field( 'gt_cod_regen_secret_nonce', 'gt_cod_regen_secret_nonce_field' ); ?>
 	</form>
 
-	<div style="display: flex; flex-direction: column; gap: 25px; max-width: 950px;">
+	<div style="display: flex; flex-direction: column; gap: 25px; max-width: 1050px; width: 100%;">
 
 		<!-- BLOCK 1: API Settings -->
-		<div class="card" style="padding: 20px 25px; margin: 0; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+		<div class="card" style="max-width: 100%; width: 100%; padding: 20px 25px; margin: 0; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); box-sizing: border-box;">
 			<h2 style="margin-top: 0; color: #005aa4; font-size: 1.3em;">
 				<span class="dashicons dashicons-admin-network" style="font-size: 24px; vertical-align: middle; margin-right: 5px;"></span>
 				<?php esc_html_e( '1. Στοιχεία API Γενικής Ταχυδρομικής', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
@@ -165,7 +165,7 @@ $imap_next_cron     = wp_next_scheduled( 'gtvfw_cod_imap_cron_check' );
 		</div>
 
 		<!-- BLOCK 2: Unified Webhook & Secret Key -->
-		<div class="card" style="padding: 20px 25px; margin: 0; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+		<div class="card" style="max-width: 100%; width: 100%; padding: 20px 25px; margin: 0; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); box-sizing: border-box;">
 			<h2 style="margin-top: 0; color: #135e96; font-size: 1.3em;">
 				<span class="dashicons dashicons-rest-api" style="font-size: 24px; vertical-align: middle; margin-right: 5px;"></span>
 				<?php esc_html_e( '2. Ενιαίο Webhook & Secret Key', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
@@ -262,48 +262,50 @@ $imap_next_cron     = wp_next_scheduled( 'gtvfw_cod_imap_cron_check' );
 
 				<!-- IMAP Settings Panel -->
 				<div id="gt_hub_panel_imap" style="<?php echo 'imap' === $auto_method ? '' : 'display:none;'; ?>">
-					<div style="background: #fdfdfd; border: 1px solid #ccd0d4; padding: 18px; border-radius: 4px; margin: 15px 0;">
+					<div style="background: #fdfdfd; border: 1px solid #ccd0d4; padding: 18px 22px; border-radius: 4px; margin: 15px 0; box-sizing: border-box;">
 						<h3 style="margin-top: 0; color: #23282d; font-size: 14px;">
 							<span class="dashicons dashicons-email" style="vertical-align: middle;"></span>
 							<?php esc_html_e( 'Στοιχεία Σύνδεσης IMAP Mail Server', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
 						</h3>
 
-						<table class="form-table" style="margin-top: 0;">
+						<table class="form-table" style="margin-top: 0; width: 100%; table-layout: auto;">
 							<tbody>
 								<tr>
-									<th scope="row" style="width: 200px;"><label for="imap_host"><?php esc_html_e( 'Διακομιστής (Host):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
-									<td><input type="text" id="imap_host" name="imap_host" value="<?php echo esc_attr( $imap_settings['host'] ); ?>" class="regular-text" placeholder="imap.gmail.com" /></td>
+									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_host"><?php esc_html_e( 'Διακομιστής (Host):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
+									<td><input type="text" id="imap_host" name="imap_host" value="<?php echo esc_attr( $imap_settings['host'] ); ?>" class="regular-text" style="width: 100%; max-width: 440px;" placeholder="imap.gmail.com" /></td>
 								</tr>
 								<tr>
-									<th scope="row"><label for="imap_port"><?php esc_html_e( 'Θύρα (Port) & Κρυπτογράφηση:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
+									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_port"><?php esc_html_e( 'Θύρα (Port) & Κρυπτογράφηση:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
 									<td>
-										<input type="number" id="imap_port" name="imap_port" value="<?php echo esc_attr( $imap_settings['port'] ); ?>" style="width: 80px;" />
-										<select name="imap_encryption" id="imap_encryption" style="margin-left: 8px;">
-											<option value="ssl" <?php selected( $imap_settings['encryption'], 'ssl' ); ?>>SSL / TLS (993)</option>
-											<option value="tls" <?php selected( $imap_settings['encryption'], 'tls' ); ?>>STARTTLS (143)</option>
-											<option value="none" <?php selected( $imap_settings['encryption'], 'none' ); ?>>None (143)</option>
-										</select>
+										<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+											<input type="number" id="imap_port" name="imap_port" value="<?php echo esc_attr( $imap_settings['port'] ); ?>" style="width: 85px;" />
+											<select name="imap_encryption" id="imap_encryption" style="min-width: 160px;">
+												<option value="ssl" <?php selected( $imap_settings['encryption'], 'ssl' ); ?>>SSL / TLS (993)</option>
+												<option value="tls" <?php selected( $imap_settings['encryption'], 'tls' ); ?>>STARTTLS (143)</option>
+												<option value="none" <?php selected( $imap_settings['encryption'], 'none' ); ?>>None (143)</option>
+											</select>
+										</div>
 									</td>
 								</tr>
 								<tr>
-									<th scope="row"><label for="imap_username"><?php esc_html_e( 'Όνομα Χρήστη / Email:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
-									<td><input type="text" id="imap_username" name="imap_username" value="<?php echo esc_attr( $imap_settings['username'] ); ?>" class="regular-text" placeholder="info@example.gr" /></td>
+									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_username"><?php esc_html_e( 'Όνομα Χρήστη / Email:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
+									<td><input type="text" id="imap_username" name="imap_username" value="<?php echo esc_attr( $imap_settings['username'] ); ?>" class="regular-text" style="width: 100%; max-width: 440px;" placeholder="info@example.gr" /></td>
 								</tr>
 								<tr>
-									<th scope="row"><label for="imap_password"><?php esc_html_e( 'Κωδικός Πρόσβασης:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
+									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_password"><?php esc_html_e( 'Κωδικός Πρόσβασης:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
 									<td>
-										<input type="password" id="imap_password" name="imap_password" value="<?php echo esc_attr( $imap_settings['password'] ); ?>" class="regular-text" />
+										<input type="password" id="imap_password" name="imap_password" value="<?php echo esc_attr( $imap_settings['password'] ); ?>" class="regular-text" style="width: 100%; max-width: 440px;" />
 										<p class="description"><?php esc_html_e( 'Για λογαριασμούς Gmail με 2FA, χρησιμοποιήστε App Password.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></p>
 									</td>
 								</tr>
 								<tr>
-									<th scope="row"><label for="imap_folder"><?php esc_html_e( 'Φάκελος (Folder):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
-									<td><input type="text" id="imap_folder" name="imap_folder" value="<?php echo esc_attr( $imap_settings['folder'] ); ?>" class="regular-text" placeholder="INBOX" /></td>
+									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_folder"><?php esc_html_e( 'Φάκελος (Folder):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
+									<td><input type="text" id="imap_folder" name="imap_folder" value="<?php echo esc_attr( $imap_settings['folder'] ); ?>" class="regular-text" style="width: 100%; max-width: 440px;" placeholder="INBOX" /></td>
 								</tr>
 								<tr>
-									<th scope="row"><label for="imap_schedule"><?php esc_html_e( 'Συχνότητα Ελέγχου (WP-Cron):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
+									<th scope="row" style="width: 260px; min-width: 230px;"><label for="imap_schedule"><?php esc_html_e( 'Συχνότητα Ελέγχου (WP-Cron):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></label></th>
 									<td>
-										<select name="imap_schedule" id="imap_schedule">
+										<select name="imap_schedule" id="imap_schedule" style="min-width: 220px;">
 											<option value="hourly" <?php selected( $imap_settings['schedule'], 'hourly' ); ?>><?php esc_html_e( 'Κάθε 1 Ώρα', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
 											<option value="twicedaily" <?php selected( $imap_settings['schedule'], 'twicedaily' ); ?>><?php esc_html_e( 'Δύο Φορές την Ημέρα (Κάθε 12 Ώρες)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
 											<option value="daily" <?php selected( $imap_settings['schedule'], 'daily' ); ?>><?php esc_html_e( 'Μία Φορά την Ημέρα (Κάθε 24 Ώρες)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></option>
@@ -336,7 +338,7 @@ $imap_next_cron     = wp_next_scheduled( 'gtvfw_cod_imap_cron_check' );
 		</div>
 
 		<!-- BLOCK 3: Unified Google Apps Script -->
-		<div class="card" style="padding: 20px 25px; margin: 0; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+		<div class="card" style="max-width: 100%; width: 100%; padding: 20px 25px; margin: 0; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); box-sizing: border-box;">
 			<h2 style="margin-top: 0; color: #005aa4; font-size: 1.3em;">
 				<span class="dashicons dashicons-google" style="font-size: 24px; vertical-align: middle; margin-right: 5px;"></span>
 				<?php esc_html_e( '3. Ενιαίο Google Apps Script (Ένα copy-paste για όλα)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?>
