@@ -384,17 +384,23 @@ $cod_import_url = admin_url( 'admin.php?page=gtvfw_cod_import' );
   const WEBHOOK_URL = "' . esc_url_raw( $webhook_url ) . '";
   const SECRET_KEY  = "' . esc_js( $webhook_secret ) . '";
 
-  // Search unread emails exclusively from Geniki Taxydromiki COD department (cod@taxydromiki.gr)
-  const searchQuery = "from:cod@taxydromiki.gr has:attachment is:unread";
-  const threads = GmailApp.search(searchQuery, 0, 5);
+  // Search emails from cod@taxydromiki.gr with attachments that haven\'t been tagged with COD-Processed yet
+  const searchQuery = "from:cod@taxydromiki.gr has:attachment -label:COD-Processed";
+  const threads = GmailApp.search(searchQuery, 0, 10);
 
   let processedCount = 0;
+  let label = GmailApp.getUserLabelByName("COD-Processed");
+  if (!label) {
+    label = GmailApp.createLabel("COD-Processed");
+  }
 
   for (let t = 0; t < threads.length; t++) {
-    const messages = threads[t].getMessages();
+    const thread = threads[t];
+    const messages = thread.getMessages();
+    let threadUpdated = false;
+
     for (let m = 0; m < messages.length; m++) {
       const message = messages[m];
-      if (!message.isUnread()) continue;
 
       // Ensure sender is specifically cod@taxydromiki.gr (ignore invoices from apostoli_timologion@taxydromiki.gr)
       const from = message.getFrom().toLowerCase();
@@ -446,16 +452,17 @@ $cod_import_url = admin_url( 'admin.php?page=gtvfw_cod_import' );
             const res = JSON.parse(text);
             if (res.success) {
               message.markRead();
-              let label = GmailApp.getUserLabelByName("COD-Processed");
-              if (!label) {
-                label = GmailApp.createLabel("COD-Processed");
-              }
-              threads[t].addLabel(label);
+              threadUpdated = true;
               processedCount++;
             }
           }
         }
       }
+    }
+
+    // Tag thread as processed so it is never checked again
+    if (threadUpdated) {
+      thread.addLabel(label);
     }
   }
   Logger.log("Finished. Processed " + processedCount + " files.");
