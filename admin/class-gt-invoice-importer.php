@@ -361,19 +361,21 @@ class GT_Invoice_Importer {
 			return new WP_Error( 'gt_order_not_found', sprintf( __( 'Η παραγγελία #%d δεν βρέθηκε.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), $order_id ) );
 		}
 
-		$courier_cost = (float) $record['total_cost'];
-		$base_cost    = (float) $record['base_cost'];
-		$cod_fee      = (float) $record['cod_fee'];
-		$invoice_no   = ! empty( $record['full_invoice'] ) ? sanitize_text_field( $record['full_invoice'] ) : ( ! empty( $record['invoice_no'] ) ? sanitize_text_field( $record['invoice_no'] ) : '' );
-		$invoice_date = ! empty( $record['invoice_date'] ) ? sanitize_text_field( $record['invoice_date'] ) : '';
-		$delivery_date= ! empty( $record['delivery_date'] ) ? sanitize_text_field( $record['delivery_date'] ) : '';
-		$weight       = isset( $record['weight'] ) ? (float) $record['weight'] : 0.0;
+		$courier_cost   = (float) $record['total_cost'];
+		$base_cost      = (float) $record['base_cost'];
+		$cod_fee        = (float) $record['cod_fee'];
+		$invoice_no     = ! empty( $record['full_invoice'] ) ? sanitize_text_field( $record['full_invoice'] ) : ( ! empty( $record['invoice_no'] ) ? sanitize_text_field( $record['invoice_no'] ) : '' );
+		$invoice_date   = ! empty( $record['invoice_date'] ) ? sanitize_text_field( $record['invoice_date'] ) : '';
+		$delivery_date  = ! empty( $record['delivery_date'] ) ? sanitize_text_field( $record['delivery_date'] ) : '';
+		$weight         = isset( $record['weight'] ) ? (float) $record['weight'] : 0.0;
 		$extra_services = isset( $record['extra_services'] ) ? (array) $record['extra_services'] : array();
+		$has_cod        = isset( $extra_services['ΑΜ'] ) || isset( $extra_services['AM'] );
 
 		// Update Order Meta
 		$order->update_meta_data( 'gt_courier_shipping_cost', $courier_cost );
 		$order->update_meta_data( 'gt_courier_base_cost', $base_cost );
 		$order->update_meta_data( 'gt_courier_cod_fee', $cod_fee );
+		$order->update_meta_data( 'gt_courier_has_cod', $has_cod ? 'yes' : 'no' );
 		$order->update_meta_data( 'gt_courier_invoice_no', $invoice_no );
 		$order->update_meta_data( 'gt_courier_invoice_date', $invoice_date );
 		$order->update_meta_data( 'gt_courier_weight', $weight );
@@ -397,17 +399,22 @@ class GT_Invoice_Importer {
 		$diff         = $client_total - $courier_cost;
 		$diff_sign    = $diff >= 0 ? '+' : '';
 
-		// Build friendly extras string
+		// Build friendly extras string (only show separate cost when amount > 0, e.g. ZB: +2,30 €)
 		$extras_str_arr = array();
 		foreach ( $extra_services as $code => $amt ) {
-			$label = isset( self::SERVICE_LABELS[ $code ] ) ? self::SERVICE_LABELS[ $code ] : $code;
-			$extras_str_arr[] = sprintf( '%s: %s €', $label, number_format( (float) $amt, 2, ',', '.' ) );
+			$label   = isset( self::SERVICE_LABELS[ $code ] ) ? self::SERVICE_LABELS[ $code ] : $code;
+			$amt_val = (float) $amt;
+			if ( $amt_val > 0 ) {
+				$extras_str_arr[] = sprintf( '%s (+%s €)', $label, number_format( $amt_val, 2, ',', '.' ) );
+			} else {
+				$extras_str_arr[] = $label;
+			}
 		}
 		$extras_text = ! empty( $extras_str_arr ) ? implode( ', ', $extras_str_arr ) : '-';
 
 		/* translators: 1: invoice no, 2: courier cost, 3: client total, 4: difference, 5: base, 6: extras */
 		$note = sprintf(
-			__( 'Γενική Ταχυδρομική - Κόστος Τιμολογίου (%1$s): %2$s € | Χρέωση Πελάτη: %3$s € | Διαφορά: %4$s € (Βασικό: %5$s €, Πρόσθετα: %6$s).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
+			__( 'Γενική Ταχυδρομική - Κόστος Τιμολογίου (%1$s): %2$s € | Χρέωση Πελάτη: %3$s € | Διαφορά: %4$s € (Αξία Μεταφ.: %5$s €, Πρόσθετες Υπηρεσίες: %6$s).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
 			$invoice_no ? $invoice_no : '-',
 			number_format( $courier_cost, 2, ',', '.' ),
 			number_format( $client_total, 2, ',', '.' ),

@@ -655,18 +655,28 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 				echo '<tr>';
 				echo '<td style="padding:3px 0; color:#555;">' . esc_html__( 'Κόστος Γεν. Ταχυδρομικής (Καθαρό):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) . '</td>';
 				echo '<td style="padding:3px 0; text-align:right; font-weight:600;">' . esc_html( number_format( $courier_cost, 2, ',', '.' ) ) . ' €';
-				echo ' <span style="font-weight:normal; font-size:11px; color:#777;">(Βασικό: ' . esc_html( number_format( $base_cost, 2, ',', '.' ) ) . '€)</span>';
+				echo ' <span style="font-weight:normal; font-size:11px; color:#777;">(Αξία Μεταφ.: ' . esc_html( number_format( $base_cost, 2, ',', '.' ) ) . '€)</span>';
 				echo '</td>';
 				echo '</tr>';
 
 				if ( ! empty( $extra_services ) ) {
 					echo '<tr>';
-					echo '<td style="padding:3px 0; color:#555; vertical-align:top;">' . esc_html__( 'Πρόσθετες Χρεώσεις ΓΤ:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) . '</td>';
+					echo '<td style="padding:3px 0; color:#555; vertical-align:top;">' . esc_html__( 'Πρόσθετες Υπηρεσίες ΓΤ:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) . '</td>';
 					echo '<td style="padding:3px 0; text-align:right;">';
 					foreach ( $extra_services as $code => $amt ) {
-						$label = isset( GT_Invoice_Importer::SERVICE_LABELS[ $code ] ) ? GT_Invoice_Importer::SERVICE_LABELS[ $code ] : $code;
-						echo '<span style="display:inline-block; margin-left:4px; padding:1px 5px; font-size:10px; background:#e2e4e7; border-radius:3px; color:#333;" title="' . esc_attr( $label ) . '">';
-						echo esc_html( $code . ': ' . number_format( (float) $amt, 2, ',', '.' ) . '€' );
+						$label     = isset( GT_Invoice_Importer::SERVICE_LABELS[ $code ] ) ? GT_Invoice_Importer::SERVICE_LABELS[ $code ] : $code;
+						$amt_float = (float) $amt;
+						if ( $amt_float > 0 ) {
+							$badge_txt   = $code . ' (+' . number_format( $amt_float, 2, ',', '.' ) . '€)';
+							$badge_title = $label . ': +' . number_format( $amt_float, 2, ',', '.' ) . ' € (+ ΦΠΑ)';
+							$badge_style = 'background:#d1ecf1; color:#0c5460; font-weight:600;';
+						} else {
+							$badge_txt   = $code;
+							$badge_title = $label . ( 'ΑΜ' === $code || 'AM' === $code ? ' (συμπεριλαμβάνεται στη χρέωση)' : '' );
+							$badge_style = 'background:#e2e4e7; color:#333;';
+						}
+						echo '<span style="display:inline-block; margin-left:4px; padding:2px 6px; font-size:11px; border-radius:3px; ' . esc_attr( $badge_style ) . '" title="' . esc_attr( $badge_title ) . '">';
+						echo esc_html( $badge_txt );
 						echo '</span>';
 					}
 					echo '</td>';

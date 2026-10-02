@@ -460,13 +460,25 @@ $last_invoice_log   = get_option( 'gtvfw_invoice_last_log' );
 							</td>
 							<td>
 								<strong><?php echo esc_html( number_format( (float) $r['total_cost'], 2, ',', '.' ) ); ?> €</strong>
-								<span style="color: #666; font-size: 11px;">(Βασ: <?php echo esc_html( number_format( (float) $r['base_cost'], 2, ',', '.' ) ); ?>€)</span>
+								<span style="color: #666; font-size: 11px;">(Αξία Μεταφ.: <?php echo esc_html( number_format( (float) $r['base_cost'], 2, ',', '.' ) ); ?>€)</span>
 								<?php if ( ! empty( $r['extra_services'] ) ) : ?>
-									<div style="margin-top: 2px;">
+									<div style="margin-top: 3px;">
 										<?php foreach ( $r['extra_services'] as $code => $amt ) : ?>
-											<?php $label = isset( GT_Invoice_Importer::SERVICE_LABELS[ $code ] ) ? GT_Invoice_Importer::SERVICE_LABELS[ $code ] : $code; ?>
-											<span style="display: inline-block; padding: 1px 4px; font-size: 10px; background: #e0e6ed; color: #1e3a5f; border-radius: 3px;" title="<?php echo esc_attr( $label ); ?>">
-												<?php echo esc_html( $code . ': ' . number_format( (float) $amt, 2, ',', '.' ) . '€' ); ?>
+											<?php
+											$label     = isset( GT_Invoice_Importer::SERVICE_LABELS[ $code ] ) ? GT_Invoice_Importer::SERVICE_LABELS[ $code ] : $code;
+											$amt_float = (float) $amt;
+											if ( $amt_float > 0 ) {
+												$badge_txt   = $code . ' (+' . number_format( $amt_float, 2, ',', '.' ) . '€)';
+												$badge_title = $label . ': +' . number_format( $amt_float, 2, ',', '.' ) . ' € (+ ΦΠΑ)';
+												$badge_style = 'background: #d1ecf1; color: #0c5460; font-weight: 600;';
+											} else {
+												$badge_txt   = $code;
+												$badge_title = $label . ( 'ΑΜ' === $code || 'AM' === $code ? ' (συμπεριλαμβάνεται στη χρέωση)' : '' );
+												$badge_style = 'background: #e2e4e7; color: #333333;';
+											}
+											?>
+											<span style="display: inline-block; padding: 1px 5px; font-size: 10px; border-radius: 3px; <?php echo esc_attr( $badge_style ); ?> margin-right: 2px;" title="<?php echo esc_attr( $badge_title ); ?>">
+												<?php echo esc_html( $badge_txt ); ?>
 											</span>
 										<?php endforeach; ?>
 									</div>
