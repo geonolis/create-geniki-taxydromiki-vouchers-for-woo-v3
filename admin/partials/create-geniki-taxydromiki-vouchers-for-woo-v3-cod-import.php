@@ -280,8 +280,8 @@ $cod_import_url = admin_url( 'admin.php?page=gtvfw_cod_import' );
   const WEBHOOK_URL = "' . esc_url_raw( $webhook_url ) . '";
   const SECRET_KEY  = "' . esc_js( $webhook_secret ) . '";
 
-  // Search unread emails from Geniki Taxydromiki with attachments
-  const searchQuery = "from:taxydromiki.gr has:attachment is:unread";
+  // Search unread emails exclusively from Geniki Taxydromiki COD department (cod@taxydromiki.gr)
+  const searchQuery = "from:cod@taxydromiki.gr has:attachment is:unread";
   const threads = GmailApp.search(searchQuery, 0, 5);
 
   let processedCount = 0;
@@ -292,16 +292,30 @@ $cod_import_url = admin_url( 'admin.php?page=gtvfw_cod_import' );
       const message = messages[m];
       if (!message.isUnread()) continue;
 
+      // Ensure sender is specifically cod@taxydromiki.gr (ignore invoices from apostoli_timologion@taxydromiki.gr)
+      const from = message.getFrom().toLowerCase();
+      if (!from.includes("cod@taxydromiki.gr")) {
+        Logger.log("Skipping non-COD email from: " + message.getFrom());
+        continue;
+      }
+
       const attachments = message.getAttachments();
       for (let a = 0; a < attachments.length; a++) {
         const attachment = attachments[a];
         const name = attachment.getName().toLowerCase();
+
+        // Skip invoice files (ΤΠΥ) and ensure valid extension
+        if (name.includes("τπυ") || name.includes("tpy") || name.includes("timolog") || name.includes("invoice")) {
+          Logger.log("Skipping invoice attachment: " + attachment.getName());
+          continue;
+        }
 
         if (name.endsWith(".csv") || name.endsWith(".txt") || name.endsWith(".tsv")) {
           Logger.log("Processing COD file: " + attachment.getName());
 
           const payload = {
             filename: attachment.getName(),
+            sender: message.getFrom(),
             content: Utilities.base64Encode(attachment.getBytes()),
             encoding: "base64",
             email_subject: message.getSubject(),

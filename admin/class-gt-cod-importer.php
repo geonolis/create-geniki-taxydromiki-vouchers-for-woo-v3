@@ -23,35 +23,53 @@ class GT_COD_Importer {
 	 * @return string Normalized UTF-8 string.
 	 */
 	public static function normalize_content( string $raw ): string {
-		// Detect and strip BOM / convert encoding
-		if ( substr( $raw, 0, 2 ) === "\xFF\xFE" ) {
-			// UTF-16LE with BOM
-			$content = mb_convert_encoding( substr( $raw, 2 ), 'UTF-8', 'UTF-16LE' );
-		} elseif ( substr( $raw, 0, 2 ) === "\xFE\xFF" ) {
-			// UTF-16BE with BOM
-			$content = mb_convert_encoding( substr( $raw, 2 ), 'UTF-8', 'UTF-16BE' );
-		} elseif ( substr( $raw, 0, 3 ) === "\xEF\xBB\xBF" ) {
-			// UTF-8 with BOM
-			$content = substr( $raw, 3 );
-		} else {
-			// Check for null bytes indicating UTF-16LE without BOM
-			$sample = substr( $raw, 0, min( 200, strlen( $raw ) ) );
-			if ( substr_count( $sample, "\x00" ) > 5 ) {
-				$content = mb_convert_encoding( $raw, 'UTF-8', 'UTF-16LE' );
-			} elseif ( mb_check_encoding( $raw, 'UTF-8' ) ) {
-				$content = $raw;
+		try {
+			// Detect and strip BOM / convert encoding
+			if ( substr( $raw, 0, 2 ) === "\xFF\xFE" ) {
+				// UTF-16LE with BOM
+				$content = mb_convert_encoding( substr( $raw, 2 ), 'UTF-8', 'UTF-16LE' );
+			} elseif ( substr( $raw, 0, 2 ) === "\xFE\xFF" ) {
+				// UTF-16BE with BOM
+				$content = mb_convert_encoding( substr( $raw, 2 ), 'UTF-8', 'UTF-16BE' );
+			} elseif ( substr( $raw, 0, 3 ) === "\xEF\xBB\xBF" ) {
+				// UTF-8 with BOM
+				$content = substr( $raw, 3 );
 			} else {
-				// Fallback to Windows-1253 (Greek) or ISO-8859-7
-				$content = mb_convert_encoding( $raw, 'UTF-8', 'Windows-1253' );
+				// Check for null bytes indicating UTF-16LE without BOM
+				$sample = substr( $raw, 0, min( 200, strlen( $raw ) ) );
+				if ( substr_count( $sample, "\x00" ) > 5 ) {
+					$content = mb_convert_encoding( $raw, 'UTF-8', 'UTF-16LE' );
+				} elseif ( mb_check_encoding( $raw, 'UTF-8' ) ) {
+					$content = $raw;
+				} else {
+					// Fallback to Windows-1253 (Greek) via iconv or ISO-8859-7
+					$content = '';
+					if ( function_exists( 'iconv' ) ) {
+						$conv = @iconv( 'Windows-1253', 'UTF-8//IGNORE', $raw );
+						if ( false !== $conv && ! empty( $conv ) ) {
+							$content = $conv;
+						} else {
+							$conv_iso = @iconv( 'ISO-8859-7', 'UTF-8//IGNORE', $raw );
+							if ( false !== $conv_iso && ! empty( $conv_iso ) ) {
+								$content = $conv_iso;
+							}
+						}
+					}
+					if ( empty( $content ) ) {
+						$content = mb_convert_encoding( $raw, 'UTF-8', 'ISO-8859-7' );
+					}
+				}
 			}
-		}
 
-		// Remove any remaining zero-width BOM (U+FEFF)
-		if ( mb_substr( $content, 0, 1, 'UTF-8' ) === "\xEF\xBB\xBF" || mb_substr( $content, 0, 1, 'UTF-8' ) === "\u{FEFF}" ) {
-			$content = mb_substr( $content, 1, null, 'UTF-8' );
-		}
+			// Remove any remaining zero-width BOM (U+FEFF)
+			if ( mb_substr( $content, 0, 1, 'UTF-8' ) === "\xEF\xBB\xBF" || mb_substr( $content, 0, 1, 'UTF-8' ) === "\u{FEFF}" ) {
+				$content = mb_substr( $content, 1, null, 'UTF-8' );
+			}
 
-		return $content;
+			return $content;
+		} catch ( \Throwable $e ) {
+			return $raw;
+		}
 	}
 
 	/** 
@@ -96,7 +114,19 @@ class GT_COD_Importer {
 	 */
 	public static function process_raw_content( string $raw_bytes, string $filename = '' ) {
 		if ( empty( $raw_bytes ) ) {
-			return new WP_Error( 'gt_empty_content', __( 'Δεν ελήφθησαν δεδομένα αρχείου.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+			return new WP_Error( 'gt_empty_content', __( 'Δεν ελήφθησαν δεδομένα αρχείου.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), array( 'status' => 400 ) );
+		}
+
+		// Reject invoice files (e.g. ΤΠΥ from apostoli_timologion@taxydromiki.gr)
+		if ( ! empty( $filename ) ) {
+			$clean_name = mb_strtolower( $filename, 'UTF-8' );
+			if ( strpos( $clean_name, 'τπυ' ) !== false || strpos( $clean_name, 'tpy' ) !== false || strpos( $clean_name, 'timolog' ) !== false || strpos( $clean_name, 'τιμολογ' ) !== false ) {
+				return new WP_Error(
+					'gt_invoice_file_rejected',
+					sprintf( __( 'Το αρχείο "%s" είναι τιμολόγιο (ΤΠΥ) και όχι εκκαθάριση αντικαταβολών. Επεξεργάζονται μόνο αρχεία αντικαταβολών από cod@taxydromiki.gr.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), esc_html( $filename ) ),
+					array( 'status' => 400 )
+				);
+			}
 		}
 
 		$normalized = self::normalize_content( $raw_bytes );
@@ -107,7 +137,7 @@ class GT_COD_Importer {
 		}
 
 		if ( empty( $raw_rows ) ) {
-			return new WP_Error( 'gt_no_rows', __( 'Δεν βρέθηκαν γραμμές αποστολών στο αρχείο.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+			return new WP_Error( 'gt_no_rows', __( 'Δεν βρέθηκαν γραμμές αποστολών στο αρχείο.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), array( 'status' => 400 ) );
 		}
 
 		$matched_records = self::match_records( $raw_rows );
@@ -182,7 +212,17 @@ class GT_COD_Importer {
 	public static function parse_csv_content( string $content ) {
 		$lines = preg_split( '/\r\n|\r|\n/', trim( $content ) );
 		if ( empty( $lines ) ) {
-			return new WP_Error( 'gt_no_lines', __( 'Δεν βρέθηκαν δεδομένα στο αρχείο.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+			return new WP_Error( 'gt_no_lines', __( 'Δεν βρέθηκαν δεδομένα στο αρχείο.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), array( 'status' => 400 ) );
+		}
+
+		// Detect and reject invoice content keywords in the first lines
+		$first_sample = mb_strtolower( implode( ' ', array_slice( $lines, 0, 5 ) ), 'UTF-8' );
+		if ( strpos( $first_sample, 'τιμολογ' ) !== false || strpos( $first_sample, 'παροχησ υπηρεσιων' ) !== false || strpos( $first_sample, 'παροχής υπηρεσιών' ) !== false || strpos( $first_sample, 'τπυ' ) !== false || strpos( $first_sample, 'τ.π.υ' ) !== false ) {
+			return new WP_Error(
+				'gt_invoice_content_detected',
+				__( 'Το περιεχόμενο του αρχείου αναγνωρίστηκε ως τιμολόγιο (ΤΠΥ) και απορρίφθηκε. Επεξεργάζονται μόνο αρχεία εκκαθάρισης αντικαταβολών.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
+				array( 'status' => 400 )
+			);
 		}
 
 		// Detect delimiter in the first line
@@ -214,13 +254,15 @@ class GT_COD_Importer {
 			'amount'        => 6,
 		);
 
+		$voucher_found = false;
 		foreach ( $header as $idx => $col_name ) {
 			$clean = mb_strtolower( preg_replace( '/[\s\._\-]/u', '', $col_name ), 'UTF-8' );
-			if ( strpos( $clean, 'αποδεικτικο' ) !== false || strpos( $clean, 'voucher' ) !== false ) {
+			if ( strpos( $clean, 'αποδεικτικο' ) !== false || strpos( $clean, 'voucher' ) !== false || strpos( $clean, 'αποστολη' ) !== false ) {
 				$col_map['voucher'] = $idx;
+				$voucher_found      = true;
 			} elseif ( strpos( $clean, 'αναγνωριστικο' ) !== false || strpos( $clean, 'order' ) !== false || strpos( $clean, 'πελατη' ) !== false ) {
 				$col_map['client_ref'] = $idx;
-			} elseif ( strpos( $clean, 'ημαποστολης' ) !== false || strpos( $clean, 'αποστολη' ) !== false ) {
+			} elseif ( strpos( $clean, 'ημαποστολης' ) !== false ) {
 				$col_map['ship_date'] = $idx;
 			} elseif ( strpos( $clean, 'ημπαραδοσης' ) !== false || strpos( $clean, 'παραδοση' ) !== false ) {
 				$col_map['delivery_date'] = $idx;
@@ -230,6 +272,19 @@ class GT_COD_Importer {
 				$col_map['recipient'] = $idx;
 			} elseif ( strpos( $clean, 'προς' ) !== false || strpos( $clean, 'destination' ) !== false ) {
 				$col_map['destination'] = $idx;
+			}
+		}
+
+		if ( ! $voucher_found ) {
+			// Check if first data line has a 10-digit voucher number
+			$test_line = isset( $lines[1] ) ? str_getcsv( $lines[1], $delimiter ) : array();
+			$test_val  = isset( $test_line[1] ) ? trim( $test_line[1] ) : '';
+			if ( ! preg_match( '/^\d{10}$/', $test_val ) ) {
+				return new WP_Error(
+					'gt_no_voucher_column',
+					__( 'Το αρχείο δεν περιέχει έγκυρη στήλη αριθμού voucher αντικαταβολών της Γενικής Ταχυδρομικής.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
+					array( 'status' => 400 )
+				);
 			}
 		}
 

@@ -785,6 +785,19 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 			);
 		}
 
+		// Reject invoice emails/senders
+		$sender = ! empty( $json['sender'] ) ? sanitize_text_field( $json['sender'] ) : sanitize_text_field( $request->get_param( 'sender' ) );
+		if ( ! empty( $sender ) ) {
+			$sender_lower = strtolower( $sender );
+			if ( strpos( $sender_lower, 'apostoli_timologion' ) !== false ) {
+				return new WP_Error(
+					'gt_invoice_sender_rejected',
+					__( 'Τα μηνύματα από apostoli_timologion@taxydromiki.gr αφορούν τιμολόγια (ΤΠΥ) και δεν επεξεργάζονται ως αντικαταβολές.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
+					array( 'status' => 400 )
+				);
+			}
+		}
+
 		$result = GT_COD_Importer::process_raw_content( $raw_content, $filename );
 
 		if ( is_wp_error( $result ) ) {
