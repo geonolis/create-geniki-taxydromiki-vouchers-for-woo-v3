@@ -13,19 +13,19 @@
 ?>
 <!-- This html is added to the client order e-mail
 if GT voucher number exists at order meta  -->
-<h3>Λεπτομέρειες αποστολής:</h3>
-<p>Η παραγγελία σας έχει αποσταλλεί με τη ΓΕΝΙΚΗ ΤΑΧΥΔΡΟΜΙΚΗ.</p>
+<h3><?php esc_html_e( 'Λεπτομέρειες αποστολής:', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></h3>
+<p><?php esc_html_e( 'Η παραγγελία σας έχει αποσταλλεί με τη ΓΕΝΙΚΗ ΤΑΧΥΔΡΟΜΙΚΗ.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></p>
 <table>
     <tr>
-        <td>Αριθμός αποστολής</td>
+        <td><?php esc_html_e( 'Αριθμός αποστολής', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></td>
         <td> :</td>
-        <td> <?php echo $courier_voucher ?> </td>
+        <td> <?php echo esc_html( $courier_voucher ); ?> </td>
     </tr>
     <tr>
-        <td>Παρακολούθηση αποστολής</td>
+        <td><?php esc_html_e( 'Παρακολούθηση αποστολής', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></td>
         <td> :</td>
-        <td><a href="https://www.taxydromiki.com/track/<?php echo $courier_voucher; ?>" target="_blank">
-                https://www.taxydromiki.com/track/<?php echo $courier_voucher; ?> </a></td>
+        <td><a href="<?php echo esc_url( 'https://www.taxydromiki.com/track/' . $courier_voucher ); ?>" target="_blank">
+                <?php echo esc_html( 'https://www.taxydromiki.com/track/' . $courier_voucher ); ?> </a></td>
     </tr>
 </table>
 <br>

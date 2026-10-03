@@ -94,7 +94,7 @@ class GTVFW {
 		$pieces = 1;
 		$zip= $order->get_shipping_postcode();	
 		$message =$order->get_customer_note();
-		$ReceivedDate= date("Y-m-d");  
+		$ReceivedDate = gmdate( 'Y-m-d' );
 		//create voucher data
 		$oVoucher = array(	'OrderId' => '#' . $order_id,
 							'Name' => $name,
@@ -125,9 +125,16 @@ class GTVFW {
 			$order->save_meta_data();
 			$order->save();	
 					// πρόσθεσε σημείωση με τον αριθμό αποστολής και με link για την εκτύπωση του voucher (PDF)
-			$order->add_order_note(__('Job was sent successfully to Gen. Taxydromiki, Voucher number is '.$voucher .' </br><a target="_blank" href="'. $this->gt_api_object->get_voucher_url($voucher) . '">Print</a>', ''));
+			$order->add_order_note(
+				sprintf(
+					/* translators: 1: voucher number, 2: voucher print URL */
+					__( 'Job was sent successfully to Gen. Taxydromiki, Voucher number is %1$s </br><a target="_blank" href="%2$s">Print</a>', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
+					esc_html( $voucher ),
+					esc_url( $this->gt_api_object->get_voucher_url( $voucher ) )
+				)
+			);
 		} else {
-			$order->add_order_note(__('Order not sent to Geniki Taxydromiki due to authentication failure 1', ''));
+			$order->add_order_note( __( 'Order not sent to Geniki Taxydromiki due to authentication failure 1', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
 		} 		
 		
 	} // τέλος function woocommerce_create_gt_voucher() 

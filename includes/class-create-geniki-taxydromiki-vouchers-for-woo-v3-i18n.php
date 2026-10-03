@@ -33,13 +33,7 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_i18n {
 	 * @since    1.0.0
 	 */
 	public function load_plugin_textdomain() {
-
-		load_plugin_textdomain(
-			'create-geniki-taxydromiki-vouchers-for-woo-v3',
-			false,
-			dirname( dirname( plugin_basename( __FILE__ ) ) ) . '/languages/'
-		);
-
+		// Translations are loaded automatically by WordPress since version 4.6.
 	}
 
 

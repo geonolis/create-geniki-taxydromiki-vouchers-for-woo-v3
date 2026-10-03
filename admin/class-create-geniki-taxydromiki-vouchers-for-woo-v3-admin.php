@@ -157,26 +157,27 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 
 	public function displayPluginAdminSettings() {
          // set this var to be used in the settings-display view
-//		$active_tab = isset( $_GET[ 'tab' ] ) ? $_GET[ 'tab' ] : 'general';
-		if(isset($_GET['error_message'])){
-			add_action('admin_notices', array($this,'pluginNameSettingsMessages'));
-			do_action( 'admin_notices', $_GET['error_message'] );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['error_message'] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$error_code = sanitize_text_field( wp_unslash( $_GET['error_message'] ) );
+			$this->pluginNameSettingsMessages( $error_code );
 		}
-		require_once 'partials/'.$this->plugin_name.'-admin-display.php';
+		require_once 'partials/' . $this->plugin_name . '-admin-display.php';
 	}
 
 	public function displayPluginCodImport() {
-		require_once 'partials/'.$this->plugin_name.'-cod-import.php';
+		require_once 'partials/' . $this->plugin_name . '-cod-import.php';
 	}
 
 	public function displayPluginInvoiceImport() {
-		require_once 'partials/'.$this->plugin_name.'-invoice-import.php';
+		require_once 'partials/' . $this->plugin_name . '-invoice-import.php';
 	}
 
 	public function pluginNameSettingsMessages($error_message){
 		switch ($error_message) {
 			case '1':
-			$message = __( 'There was an error adding this setting. Please try again.  If this persists, shoot us an email.', 'my-text-domain' );                 
+			$message = __( 'There was an error adding this setting. Please try again.  If this persists, shoot us an email.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' );                 
 			$err_code = esc_attr( 'plugin_name_example_setting' );                 
 			$setting_field = 'plugin_name_example_setting';                 
 			break;
@@ -392,36 +393,82 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 
 				case 'input':
 				$value = ($args['value_type'] == 'serialized') ? serialize($wp_data_value) : $wp_data_value;
-				if($args['subtype'] != 'checkbox' && $args['subtype'] != 'multiselect') {
-					$prependStart = (isset($args['prepend_value'])) ? '<div class="input-prepend"> <span class="add-on">'.$args['prepend_value'].'</span>' : '';
-					$prependEnd = (isset($args['prepend_value'])) ? '</div>' : '';
-					$step = (isset($args['step'])) ? 'step="'.$args['step'].'"' : '';
-					$min = (isset($args['min'])) ? 'min="'.$args['min'].'"' : '';
-					$max = (isset($args['max'])) ? 'max="'.$args['max'].'"' : '';
-					if(isset($args['disabled'])){
-									// hide the actual input bc if it was just a disabled input the info saved in the database would be wrong - bc it would pass empty values and wipe the actual information
-						echo $prependStart.'<input type="'.$args['subtype'].'" id="'.$args['id'].'_disabled" '.$step.' '.$max.' '.$min.' name="'.$array_element.'_disabled" size="40" disabled value="' . esc_attr($value) . '" /><input type="hidden" id="'.$args['id'].'" '.$step.' '.$max.' '.$min.' name="'.$array_element.'" size="40" value="' . esc_attr($value) . '" />'.$prependEnd;
+				if ( 'checkbox' !== $args['subtype'] && 'multiselect' !== $args['subtype'] ) {
+					$prependStart = ( isset( $args['prepend_value'] ) ) ? '<div class="input-prepend"> <span class="add-on">' . esc_html( $args['prepend_value'] ) . '</span>' : '';
+					$prependEnd   = ( isset( $args['prepend_value'] ) ) ? '</div>' : '';
+					$step_attr    = ( isset( $args['step'] ) ) ? ' step="' . esc_attr( $args['step'] ) . '"' : '';
+					$min_attr     = ( isset( $args['min'] ) ) ? ' min="' . esc_attr( $args['min'] ) . '"' : '';
+					$max_attr     = ( isset( $args['max'] ) ) ? ' max="' . esc_attr( $args['max'] ) . '"' : '';
+					$subtype_attr = esc_attr( $args['subtype'] );
+					$id_attr      = esc_attr( $args['id'] );
+					$elem_attr    = esc_attr( $array_element );
+					$val_attr     = esc_attr( $value );
+
+					if ( isset( $args['disabled'] ) ) {
+						echo wp_kses_post( $prependStart );
+						printf(
+							'<input type="%1$s" id="%2$s_disabled"%3$s%4$s%5$s name="%6$s_disabled" size="40" disabled value="%7$s" />',
+							$subtype_attr,
+							$id_attr,
+							$step_attr,
+							$max_attr,
+							$min_attr,
+							$elem_attr,
+							$val_attr
+						);
+						printf(
+							'<input type="hidden" id="%1$s"%2$s%3$s%4$s name="%5$s" size="40" value="%6$s" />',
+							$id_attr,
+							$step_attr,
+							$max_attr,
+							$min_attr,
+							$elem_attr,
+							$val_attr
+						);
+						echo wp_kses_post( $prependEnd );
 					} else {
-						echo $prependStart.'<input type="'.$args['subtype'].'" id="'.$args['id'].'" "'.$args['required'].'" '.$step.' '.$max.' '.$min.' name="'.$array_element.'" size="40" value="' . esc_attr($value) . '" />'.$prependEnd;
+						$req_attr = ! empty( $args['required'] ) ? ' required="required"' : '';
+						echo wp_kses_post( $prependStart );
+						printf(
+							'<input type="%1$s" id="%2$s"%3$s%4$s%5$s%6$s name="%7$s" size="40" value="%8$s" />',
+							$subtype_attr,
+							$id_attr,
+							$req_attr,
+							$step_attr,
+							$max_attr,
+							$min_attr,
+							$elem_attr,
+							$val_attr
+						);
+						echo wp_kses_post( $prependEnd );
 					}
-					/*<input required="required" '.$disabled.' type="number" step="any" id="'.$this->plugin_name.'_cost2" name="'.$this->plugin_name.'_cost2" value="' . esc_attr( $cost ) . '" size="25" /><input type="hidden" id="'.$this->plugin_name.'_cost" step="any" name="'.$this->plugin_name.'_cost" value="' . esc_attr( $cost ) . '" />*/
-
-				} elseif ($args['subtype']=='checkbox') {
-					$checked = ($value) ? 'checked' : '';
-					echo '<input type="'.$args['subtype'].'" id="'.$args['id'].'" "'.$args['required'].'" name="'.$array_element.'" size="40" value="1" '.$checked.' />';
-				} else {  //subtype==multiselect
-					$wp_data_value = is_array($wp_data_value) ? $wp_data_value : array();
-
-					echo '<select style="width:280px" id="'. $args['id'] .'" name="'. $array_element .'[]" multiple>';
-					foreach ($args['get_options_list'] as $shipping_method) 
-					{
-						$selected = false;
-						if( in_array(  $shipping_method, $wp_data_value )	) 
-						{
-							$selected = true;			
-						} 
-
-						echo "<option value='".$shipping_method."' " . selected( $selected, true, false ) . ">". $shipping_method."</option>";
+				} elseif ( 'checkbox' === $args['subtype'] ) {
+					$checked  = ( $value ) ? 'checked="checked"' : '';
+					$req_attr = ! empty( $args['required'] ) ? ' required="required"' : '';
+					printf(
+						'<input type="checkbox" id="%1$s"%2$s name="%3$s" size="40" value="1" %4$s />',
+						esc_attr( $args['id'] ),
+						$req_attr,
+						esc_attr( $array_element ),
+						$checked
+					);
+				} else { // multiselect
+					$wp_data_value = is_array( $wp_data_value ) ? $wp_data_value : array();
+					printf(
+						'<select style="width:280px" id="%1$s" name="%2$s[]" multiple>',
+						esc_attr( $args['id'] ),
+						esc_attr( $array_element )
+					);
+					if ( ! empty( $args['get_options_list'] ) && is_array( $args['get_options_list'] ) ) {
+						foreach ( $args['get_options_list'] as $shipping_method ) {
+							$selected = in_array( $shipping_method, $wp_data_value, true );
+							printf(
+								'<option value="%1$s" %2$s>%3$s</option>',
+								esc_attr( $shipping_method ),
+								selected( $selected, true, false ),
+								esc_html( $shipping_method )
+							);
+						}
 					}
 					echo '</select>';
 				}
@@ -483,7 +530,7 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 		    $order = ( $order_or_postid instanceof WC_Order )
 			    ? $order_or_postid
 			    : wc_get_order( $order_or_postid );
-	 		echo $this->gt_shipping_status( $order );
+	 		echo wp_kses_post( $this->gt_shipping_status( $order ) );
 
 			if ( $order && $order->get_meta( 'gt_cod_paid' ) === 'yes' ) {
 				$paid_amt = $order->get_meta( 'gt_cod_paid_amount' );
@@ -511,7 +558,8 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 				$border_color = $is_profit ? '#a5d6a7' : '#ef9a9a';
 
 				$tooltip = sprintf(
-					__( 'Τιμολόγιο ΓΤ: %s€ | Χρέωση Πελάτη: %s€ (Μεταφορικά: %s€ + Α/Κ: %s€) | Διαφορά: %s%s€', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
+					/* translators: 1: courier cost, 2: client total, 3: client shipping, 4: client COD, 5: sign (+/-), 6: difference */
+					__( 'Τιμολόγιο ΓΤ: %1$s€ | Χρέωση Πελάτη: %2$s€ (Μεταφορικά: %3$s€ + Α/Κ: %4$s€) | Διαφορά: %5$s%6$s€', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
 					number_format( $courier_cost, 2, ',', '.' ),
 					number_format( $client_total, 2, ',', '.' ),
 					number_format( $client_ship, 2, ',', '.' ),
@@ -580,7 +628,7 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 			echo 'not available';
 		} else {
 			if ( ! @isset( $this->gt_api ) ) $this->gt_api = new GT_API();
-			echo $this->gt_api->get_track( $courier_voucher );
+			echo wp_kses_post( $this->gt_api->get_track( $courier_voucher ) );
 		}
 
 		if ( $order ) {
@@ -722,6 +770,7 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 			return;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$current_val = isset( $_GET['gt_cod_status'] ) ? sanitize_text_field( wp_unslash( $_GET['gt_cod_status'] ) ) : '';
 		?>
 		<select name="gt_cod_status" id="dropdown_gt_cod_status">
@@ -739,10 +788,12 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 	 * @return array
 	 */
 	public function filter_hpos_orders_by_cod_status( array $query_args ): array {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( ! isset( $_GET['gt_cod_status'] ) || empty( $_GET['gt_cod_status'] ) ) {
 			return $query_args;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$status = sanitize_text_field( wp_unslash( $_GET['gt_cod_status'] ) );
 
 		if ( 'paid' === $status ) {
@@ -752,6 +803,7 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 				'value'   => 'yes',
 				'compare' => '=',
 			);
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 			$query_args['meta_query'] = $meta_query;
 		} elseif ( 'pending' === $status ) {
 			$query_args['payment_method'] = 'cod';
@@ -773,6 +825,7 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 					'compare' => '!=',
 				),
 			);
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 			$query_args['meta_query'] = $meta_query;
 		}
 
@@ -794,10 +847,12 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 			return;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( ! isset( $_GET['gt_cod_status'] ) || empty( $_GET['gt_cod_status'] ) ) {
 			return;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$status = sanitize_text_field( wp_unslash( $_GET['gt_cod_status'] ) );
 
 		$meta_query = $query->get( 'meta_query' );
@@ -811,6 +866,7 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 				'value'   => 'yes',
 				'compare' => '=',
 			);
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 			$query->set( 'meta_query', $meta_query );
 		} elseif ( 'pending' === $status ) {
 			$meta_query[] = array(
@@ -835,6 +891,7 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 					'compare' => '!=',
 				),
 			);
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 			$query->set( 'meta_query', $meta_query );
 		}
 	}
@@ -914,13 +971,16 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 				$filename = sanitize_file_name( $json['filename'] );
 			}
 		}
-		// 2. Multipart file upload ($_FILES['cod_file'] or $_FILES['invoice_file'])
-		elseif ( ! empty( $_FILES['cod_file']['tmp_name'] ) ) {
-			$raw_content = file_get_contents( $_FILES['cod_file']['tmp_name'] );
-			$filename    = sanitize_file_name( $_FILES['cod_file']['name'] );
-		} elseif ( ! empty( $_FILES['invoice_file']['tmp_name'] ) ) {
-			$raw_content = file_get_contents( $_FILES['invoice_file']['tmp_name'] );
-			$filename    = sanitize_file_name( $_FILES['invoice_file']['name'] );
+		// 2. Multipart file upload
+		elseif ( ! empty( $request->get_file_params() ) ) {
+			$files = $request->get_file_params();
+			if ( ! empty( $files['cod_file']['tmp_name'] ) && is_uploaded_file( $files['cod_file']['tmp_name'] ) ) {
+				$raw_content = file_get_contents( $files['cod_file']['tmp_name'] );
+				$filename    = ! empty( $files['cod_file']['name'] ) ? sanitize_file_name( $files['cod_file']['name'] ) : 'cod_file.csv';
+			} elseif ( ! empty( $files['invoice_file']['tmp_name'] ) && is_uploaded_file( $files['invoice_file']['tmp_name'] ) ) {
+				$raw_content = file_get_contents( $files['invoice_file']['tmp_name'] );
+				$filename    = ! empty( $files['invoice_file']['name'] ) ? sanitize_file_name( $files['invoice_file']['name'] ) : 'invoice_file.csv';
+			}
 		}
 		// 3. Raw body text
 		elseif ( ! empty( $request->get_body() ) ) {
@@ -961,6 +1021,7 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 			return rest_ensure_response( array(
 				'success'          => true,
 				'type'             => 'invoice',
+				/* translators: %d: count of updated orders */
 				'message'          => sprintf( __( 'Ενημερώθηκαν επιτυχώς %d παραγγελίες από το τιμολόγιο.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), $result['updated_orders'] ),
 				'filename'         => $result['filename'],
 				'total_rows'       => $result['total_rows'],
@@ -984,6 +1045,7 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 		return rest_ensure_response( array(
 			'success'        => true,
 			'type'           => 'cod',
+			/* translators: %d: count of updated orders */
 			'message'        => sprintf( __( 'Ενημερώθηκαν επιτυχώς %d παραγγελίες.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), $result['updated_orders'] ),
 			'filename'       => $result['filename'],
 			'total_rows'     => $result['total_rows'],
@@ -1016,9 +1078,12 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 			if ( ! empty( $json['filename'] ) ) {
 				$filename = sanitize_file_name( $json['filename'] );
 			}
-		} elseif ( ! empty( $_FILES['invoice_file']['tmp_name'] ) ) {
-			$raw_content = file_get_contents( $_FILES['invoice_file']['tmp_name'] );
-			$filename    = sanitize_file_name( $_FILES['invoice_file']['name'] );
+		} elseif ( ! empty( $request->get_file_params() ) ) {
+			$files = $request->get_file_params();
+			if ( ! empty( $files['invoice_file']['tmp_name'] ) && is_uploaded_file( $files['invoice_file']['tmp_name'] ) ) {
+				$raw_content = file_get_contents( $files['invoice_file']['tmp_name'] );
+				$filename    = ! empty( $files['invoice_file']['name'] ) ? sanitize_file_name( $files['invoice_file']['name'] ) : 'invoice_file.csv';
+			}
 		} elseif ( ! empty( $request->get_body() ) ) {
 			$raw_content = $request->get_body();
 			$filename    = $request->get_param( 'filename' ) ? sanitize_file_name( $request->get_param( 'filename' ) ) : 'raw_body.csv';
@@ -1040,6 +1105,7 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 		return rest_ensure_response( array(
 			'success'          => true,
 			'type'             => 'invoice',
+			/* translators: %d: count of updated orders */
 			'message'          => sprintf( __( 'Ενημερώθηκαν επιτυχώς %d παραγγελίες από το τιμολόγιο.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), $result['updated_orders'] ),
 			'filename'         => $result['filename'],
 			'total_rows'       => $result['total_rows'],

@@ -81,9 +81,12 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Public {
 		 * between the defined hooks and the functions defined in this
 		 * class.
 		 */
-		$url = $_SERVER['SERVER_NAME'] . $_SERVER['REQUEST_URI'];
-		if ( strpos( $url, 'view-order'))
-		wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/create-geniki-taxydromiki-vouchers-for-woo-v3-public.css', array(), $this->version, 'all' );
+		$server_name = isset( $_SERVER['SERVER_NAME'] ) ? sanitize_text_field( wp_unslash( $_SERVER['SERVER_NAME'] ) ) : '';
+		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+		$url         = $server_name . $request_uri;
+		if ( false !== strpos( $url, 'view-order' ) || ( function_exists( 'is_view_order_page' ) && is_view_order_page() ) ) {
+			wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/create-geniki-taxydromiki-vouchers-for-woo-v3-public.css', array(), $this->version, 'all' );
+		}
 	}
 
 	/**

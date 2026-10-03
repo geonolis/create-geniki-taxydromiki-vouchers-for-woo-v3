@@ -218,6 +218,7 @@ class GT_COD_Importer {
 			$errors     = imap_errors();
 			$last_error = imap_last_error();
 			$msg        = $last_error ? $last_error : ( ! empty( $errors ) ? implode( ', ', $errors ) : __( 'Αποτυχία σύνδεσης στο διακομιστή IMAP.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
+			/* translators: %s: error message */
 			return new WP_Error( 'gt_imap_connect_failed', sprintf( __( 'Σφάλμα σύνδεσης IMAP: %s', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), $msg ) );
 		}
 
@@ -229,6 +230,7 @@ class GT_COD_Importer {
 		return array(
 			'success'  => true,
 			'messages' => $msg_count,
+			/* translators: 1: folder name, 2: message count */
 			'message'  => sprintf( __( 'Επιτυχής σύνδεση στο γραμματοκιβώτιο (%1$s)! Βρέθηκαν συνολικά %2$d μηνύματα.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), esc_html( $settings['folder'] ), (int) $msg_count ),
 		);
 	}
@@ -459,6 +461,7 @@ class GT_COD_Importer {
 			if ( strpos( $clean_name, 'τπυ' ) !== false || strpos( $clean_name, 'tpy' ) !== false || strpos( $clean_name, 'timolog' ) !== false || strpos( $clean_name, 'τιμολογ' ) !== false ) {
 				return new WP_Error(
 					'gt_invoice_file_rejected',
+					/* translators: %s: filename */
 					sprintf( __( 'Το αρχείο "%s" είναι τιμολόγιο (ΤΠΥ) και όχι εκκαθάριση αντικαταβολών. Επεξεργάζονται μόνο αρχεία αντικαταβολών από cod@taxydromiki.gr.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), esc_html( $filename ) ),
 					array( 'status' => 400 )
 				);
@@ -799,11 +802,13 @@ class GT_COD_Importer {
 
 				if ( $is_paid ) {
 					$rec['status_code']    = 'already_paid';
+					/* translators: %s: paid date */
 					$rec['status_label']   = sprintf( __( 'Έχει εξοφληθεί (%s)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), $paid_date ? substr( $paid_date, 0, 10 ) : '' );
 					$rec['is_selectable']  = true;
 					$rec['default_checked']= false; // Don't check duplicates by default
 				} elseif ( $amount_differs ) {
 					$rec['status_code']    = 'amount_mismatch';
+					/* translators: %s: formatted order total amount */
 					$rec['status_label']   = sprintf( __( 'Ασυμφωνία ποσού (Παραγγελία: %s€)', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), number_format( $order_total, 2, ',', '.' ) );
 					$rec['is_selectable']  = true;
 					$rec['default_checked']= true;

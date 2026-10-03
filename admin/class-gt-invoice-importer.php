@@ -269,7 +269,9 @@ class GT_Invoice_Importer {
 
 			$placeholders = implode( ',', array_fill( 0, count( $vouchers ), '%s' ) );
 			$sql          = "SELECT {$id_col} as order_id, meta_value FROM {$meta_table} WHERE meta_key = 'courier_voucher' AND meta_value IN ({$placeholders})";
+			// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$results      = $wpdb->get_results( $wpdb->prepare( $sql, $vouchers ) );
+			// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 			if ( $results ) {
 				foreach ( $results as $row ) {
@@ -358,6 +360,7 @@ class GT_Invoice_Importer {
 	public static function save_order_invoice_cost( int $order_id, array $record ) {
 		$order = wc_get_order( $order_id );
 		if ( ! $order ) {
+			/* translators: %d: order ID */
 			return new WP_Error( 'gt_order_not_found', sprintf( __( 'Η παραγγελία #%d δεν βρέθηκε.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), $order_id ) );
 		}
 
@@ -412,8 +415,8 @@ class GT_Invoice_Importer {
 		}
 		$extras_text = ! empty( $extras_str_arr ) ? implode( ', ', $extras_str_arr ) : '-';
 
-		/* translators: 1: invoice no, 2: courier cost, 3: client total, 4: difference, 5: base, 6: extras */
 		$note = sprintf(
+			/* translators: 1: invoice no, 2: courier cost, 3: client total, 4: difference, 5: base, 6: extras */
 			__( 'Γενική Ταχυδρομική - Κόστος Τιμολογίου (%1$s): %2$s € | Χρέωση Πελάτη: %3$s € | Διαφορά: %4$s € (Αξία Μεταφ.: %5$s €, Πρόσθετες Υπηρεσίες: %6$s).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
 			$invoice_no ? $invoice_no : '-',
 			number_format( $courier_cost, 2, ',', '.' ),

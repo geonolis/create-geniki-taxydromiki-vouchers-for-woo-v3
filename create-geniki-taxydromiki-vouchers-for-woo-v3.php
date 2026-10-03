@@ -17,6 +17,9 @@
  * Plugin URI:        https://github.com/geonolis/create-geniki-taxydromiki-vouchers-for-woo
  * Description:       This is a description of the plugin.
  * Version:           1.0.0
+ * Requires at least: 6.0
+ * Requires PHP:      7.4
+ * Tested up to:      7.1
  * Author:            Γεώργιος Παπαμανώλης
  * Author URI:        https://github.com/geonolis/
  * License:           GPL-2.0+
