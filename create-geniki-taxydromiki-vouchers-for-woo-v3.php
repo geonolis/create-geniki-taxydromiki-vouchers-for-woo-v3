@@ -44,7 +44,7 @@ define( 'CREATE_GENIKI_TAXYDROMIKI_VOUCHERS_FOR_WOO_V3_VERSION', '1.0.0' );
  * The code that runs during plugin activation.
  * This action is documented in includes/class-create-geniki-taxydromiki-vouchers-for-woo-v3-activator.php
  */
-function activate_create_geniki_taxydromiki_vouchers_for_woo_v3() {
+function create_geniki_taxydromiki_vouchers_for_woo_v3_activate() {
 	require_once plugin_dir_path( __FILE__ ) . 'includes/class-create-geniki-taxydromiki-vouchers-for-woo-v3-activator.php';
 	Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Activator::activate();
 }
@@ -53,13 +53,13 @@ function activate_create_geniki_taxydromiki_vouchers_for_woo_v3() {
  * The code that runs during plugin deactivation.
  * This action is documented in includes/class-create-geniki-taxydromiki-vouchers-for-woo-v3-deactivator.php
  */
-function deactivate_create_geniki_taxydromiki_vouchers_for_woo_v3() {
+function create_geniki_taxydromiki_vouchers_for_woo_v3_deactivate() {
 	require_once plugin_dir_path( __FILE__ ) . 'includes/class-create-geniki-taxydromiki-vouchers-for-woo-v3-deactivator.php';
 	Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Deactivator::deactivate();
 }
 
-register_activation_hook( __FILE__, 'activate_create_geniki_taxydromiki_vouchers_for_woo_v3' );
-register_deactivation_hook( __FILE__, 'deactivate_create_geniki_taxydromiki_vouchers_for_woo_v3' );
+register_activation_hook( __FILE__, 'create_geniki_taxydromiki_vouchers_for_woo_v3_activate' );
+register_deactivation_hook( __FILE__, 'create_geniki_taxydromiki_vouchers_for_woo_v3_deactivate' );
 
 /**
  * The core plugin class that is used to define internationalization,
@@ -76,10 +76,10 @@ require plugin_dir_path( __FILE__ ) . 'includes/class-create-geniki-taxydromiki-
  *
  * @since    1.0.0
  */
-function run_create_geniki_taxydromiki_vouchers_for_woo_v3() {
+function create_geniki_taxydromiki_vouchers_for_woo_v3_run() {
 
 	$plugin = new Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3();
 	$plugin->run();
 
 }
-run_create_geniki_taxydromiki_vouchers_for_woo_v3();
+create_geniki_taxydromiki_vouchers_for_woo_v3_run();

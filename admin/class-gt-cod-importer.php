@@ -695,6 +695,7 @@ class GT_COD_Importer {
 
 		// 1. Primary lookup by courier_voucher meta key using standard wc_get_orders
 		if ( ! empty( $voucher ) && function_exists( 'wc_get_orders' ) ) {
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Necessary lookup by voucher number.
 			$orders = wc_get_orders( array(
 				'meta_key'   => 'courier_voucher',
 				'meta_value' => $voucher,
@@ -704,38 +705,6 @@ class GT_COD_Importer {
 
 			if ( ! empty( $orders ) ) {
 				$found = wc_get_order( $orders[0] );
-				if ( $found instanceof WC_Order ) {
-					return $found;
-				}
-			}
-		}
-
-		// 2. Direct database query fallback for HPOS or legacy postmeta
-		if ( ! empty( $voucher ) ) {
-			global $wpdb;
-
-			// HPOS meta table check
-			$hpos_table = $wpdb->prefix . 'wc_orders_meta';
-			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $hpos_table ) ) === $hpos_table ) {
-				$order_id = $wpdb->get_var( $wpdb->prepare(
-					"SELECT order_id FROM {$wpdb->prefix}wc_orders_meta WHERE meta_key = 'courier_voucher' AND meta_value = %s LIMIT 1",
-					$voucher
-				) );
-				if ( ! empty( $order_id ) ) {
-					$found = wc_get_order( (int) $order_id );
-					if ( $found instanceof WC_Order ) {
-						return $found;
-					}
-				}
-			}
-
-			// Postmeta fallback
-			$post_id = $wpdb->get_var( $wpdb->prepare(
-				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'courier_voucher' AND meta_value = %s LIMIT 1",
-				$voucher
-			) );
-			if ( ! empty( $post_id ) ) {
-				$found = wc_get_order( (int) $post_id );
 				if ( $found instanceof WC_Order ) {
 					return $found;
 				}

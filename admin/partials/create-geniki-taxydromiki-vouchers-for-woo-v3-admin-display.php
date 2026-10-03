@@ -3,6 +3,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals
+
 /**
  * Admin view for Geniki Taxydromiki Settings & Automation Hub (Tab 1).
  *
@@ -84,14 +86,17 @@ if ( isset( $_POST['gt_cod_check_imap_now'] ) && check_admin_referer( 'gt_cod_au
 		if ( is_wp_error( $gt_res ) ) {
 			$gt_notice = array(
 				'type'    => 'error',
-				/* translators: %s: IMAP error message */
-				'message' => sprintf( __( 'Σφάλμα ανάγνωσης IMAP: %s', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ), $gt_res->get_error_message() ),
+				'message' => sprintf(
+					/* translators: %s: IMAP error message */
+					__( 'Σφάλμα ανάγνωσης IMAP: %s', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
+					$gt_res->get_error_message()
+				),
 			);
 		} else {
 			$gt_notice = array(
 				'type'    => 'success',
-				/* translators: 1: messages processed, 2: files processed, 3: updated orders, 4: total amount */
 				'message' => sprintf(
+					/* translators: 1: messages processed, 2: files processed, 3: updated orders, 4: total amount */
 					__( 'Ολοκληρώθηκε ο έλεγχος IMAP! Επεξεργάστηκαν %1$d μηνύματα (%2$d αρχεία) και ενημερώθηκαν %3$d παραγγελίες (Σύνολο: %4$s €).', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
 					(int) $gt_res['messages_processed'],
 					(int) $gt_res['files_processed'],
@@ -290,7 +295,7 @@ $gt_imap_next_cron     = wp_next_scheduled( 'gtvfw_cod_imap_cron_check' );
 							</div>
 
 							<?php
-							$unified_gas_code = '/**
+							$gt_unified_gas_code = '/**
  * Ενιαίος Αυτοματισμός Γενικής Ταχυδρομικής για WooCommerce
  * Διαχειρίζεται:
  * 1. Αντικαταβολές: cod@taxydromiki.gr -> Ετικέτα: GT-COD-Processed
@@ -381,7 +386,7 @@ function processEmailQuery(query, labelName, typeName) {
 }';
 							?>
 
-							<textarea id="gt_unified_gas_code" readonly rows="12" style="width: 100%; font-family: monospace; font-size: 11px; background: #f0f0f1; border-radius: 4px; padding: 10px;"><?php echo esc_textarea( $unified_gas_code ); ?></textarea>
+							<textarea id="gt_unified_gas_code" readonly rows="12" style="width: 100%; font-family: monospace; font-size: 11px; background: #f0f0f1; border-radius: 4px; padding: 10px;"><?php echo esc_textarea( $gt_unified_gas_code ); ?></textarea>
 
 							<div style="margin-top: 12px; font-size: 12px; line-height: 1.5; color: #666;">
 								<strong><?php esc_html_e( 'Οδηγίες εγκατάστασης στο Google Apps Script (1 λεπτό):', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ); ?></strong>
@@ -389,8 +394,8 @@ function processEmailQuery(query, labelName, typeName) {
 									<li>
 									<?php
 									printf(
-										/* translators: %s: Google Apps Script URL */
 										wp_kses(
+											/* translators: %s: Google Apps Script URL */
 											__( 'Ανοίξτε το <a href="%s" target="_blank">Google Apps Script (script.google.com)</a> με το Google λογαριασμό του καταστήματος.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
 											array(
 												'a' => array(

@@ -396,62 +396,25 @@ class Create_Geniki_Taxydromiki_Vouchers_For_Woo_V3_Admin {
 				if ( 'checkbox' !== $args['subtype'] && 'multiselect' !== $args['subtype'] ) {
 					$prependStart = ( isset( $args['prepend_value'] ) ) ? '<div class="input-prepend"> <span class="add-on">' . esc_html( $args['prepend_value'] ) . '</span>' : '';
 					$prependEnd   = ( isset( $args['prepend_value'] ) ) ? '</div>' : '';
-					$step_attr    = ( isset( $args['step'] ) ) ? ' step="' . esc_attr( $args['step'] ) . '"' : '';
-					$min_attr     = ( isset( $args['min'] ) ) ? ' min="' . esc_attr( $args['min'] ) . '"' : '';
-					$max_attr     = ( isset( $args['max'] ) ) ? ' max="' . esc_attr( $args['max'] ) . '"' : '';
-					$subtype_attr = esc_attr( $args['subtype'] );
-					$id_attr      = esc_attr( $args['id'] );
-					$elem_attr    = esc_attr( $array_element );
-					$val_attr     = esc_attr( $value );
 
 					if ( isset( $args['disabled'] ) ) {
 						echo wp_kses_post( $prependStart );
-						printf(
-							'<input type="%1$s" id="%2$s_disabled"%3$s%4$s%5$s name="%6$s_disabled" size="40" disabled value="%7$s" />',
-							$subtype_attr,
-							$id_attr,
-							$step_attr,
-							$max_attr,
-							$min_attr,
-							$elem_attr,
-							$val_attr
-						);
-						printf(
-							'<input type="hidden" id="%1$s"%2$s%3$s%4$s name="%5$s" size="40" value="%6$s" />',
-							$id_attr,
-							$step_attr,
-							$max_attr,
-							$min_attr,
-							$elem_attr,
-							$val_attr
-						);
+						?>
+						<input type="<?php echo esc_attr( $args['subtype'] ); ?>" id="<?php echo esc_attr( $args['id'] ); ?>_disabled"<?php echo isset( $args['step'] ) ? ' step="' . esc_attr( $args['step'] ) . '"' : ''; ?><?php echo isset( $args['max'] ) ? ' max="' . esc_attr( $args['max'] ) . '"' : ''; ?><?php echo isset( $args['min'] ) ? ' min="' . esc_attr( $args['min'] ) . '"' : ''; ?> name="<?php echo esc_attr( $array_element ); ?>_disabled" size="40" disabled value="<?php echo esc_attr( $value ); ?>" />
+						<input type="hidden" id="<?php echo esc_attr( $args['id'] ); ?>"<?php echo isset( $args['step'] ) ? ' step="' . esc_attr( $args['step'] ) . '"' : ''; ?><?php echo isset( $args['max'] ) ? ' max="' . esc_attr( $args['max'] ) . '"' : ''; ?><?php echo isset( $args['min'] ) ? ' min="' . esc_attr( $args['min'] ) . '"' : ''; ?> name="<?php echo esc_attr( $array_element ); ?>" size="40" value="<?php echo esc_attr( $value ); ?>" />
+						<?php
 						echo wp_kses_post( $prependEnd );
 					} else {
-						$req_attr = ! empty( $args['required'] ) ? ' required="required"' : '';
 						echo wp_kses_post( $prependStart );
-						printf(
-							'<input type="%1$s" id="%2$s"%3$s%4$s%5$s%6$s name="%7$s" size="40" value="%8$s" />',
-							$subtype_attr,
-							$id_attr,
-							$req_attr,
-							$step_attr,
-							$max_attr,
-							$min_attr,
-							$elem_attr,
-							$val_attr
-						);
+						?>
+						<input type="<?php echo esc_attr( $args['subtype'] ); ?>" id="<?php echo esc_attr( $args['id'] ); ?>"<?php echo ! empty( $args['required'] ) ? ' required="required"' : ''; ?><?php echo isset( $args['step'] ) ? ' step="' . esc_attr( $args['step'] ) . '"' : ''; ?><?php echo isset( $args['max'] ) ? ' max="' . esc_attr( $args['max'] ) . '"' : ''; ?><?php echo isset( $args['min'] ) ? ' min="' . esc_attr( $args['min'] ) . '"' : ''; ?> name="<?php echo esc_attr( $array_element ); ?>" size="40" value="<?php echo esc_attr( $value ); ?>" />
+						<?php
 						echo wp_kses_post( $prependEnd );
 					}
 				} elseif ( 'checkbox' === $args['subtype'] ) {
-					$checked  = ( $value ) ? 'checked="checked"' : '';
-					$req_attr = ! empty( $args['required'] ) ? ' required="required"' : '';
-					printf(
-						'<input type="checkbox" id="%1$s"%2$s name="%3$s" size="40" value="1" %4$s />',
-						esc_attr( $args['id'] ),
-						$req_attr,
-						esc_attr( $array_element ),
-						$checked
-					);
+					?>
+					<input type="checkbox" id="<?php echo esc_attr( $args['id'] ); ?>"<?php echo ! empty( $args['required'] ) ? ' required="required"' : ''; ?> name="<?php echo esc_attr( $array_element ); ?>" size="40" value="1" <?php checked( (bool) $value ); ?> />
+					<?php
 				} else { // multiselect
 					$wp_data_value = is_array( $wp_data_value ) ? $wp_data_value : array();
 					printf(

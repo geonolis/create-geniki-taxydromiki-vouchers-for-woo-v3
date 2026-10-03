@@ -238,56 +238,17 @@ class GT_Invoice_Importer {
 	 * @return array Enriched records with order details and profit/loss calculation.
 	 */
 	public static function match_records( array $raw_records ): array {
-		global $wpdb;
-
-		// Collect vouchers and order IDs
-		$vouchers  = array();
-		$order_ids = array();
-
-		foreach ( $raw_records as $r ) {
-			if ( ! empty( $r['voucher'] ) ) {
-				$vouchers[] = $r['voucher'];
-			}
-			if ( ! empty( $r['order_ref'] ) && preg_match( '/\d+/', $r['order_ref'], $matches ) ) {
-				$order_ids[] = intval( $matches[0] );
-			}
-		}
-
-		$vouchers  = array_unique( $vouchers );
-		$order_ids = array_unique( $order_ids );
-
-		// 1. Map vouchers to order IDs
-		$voucher_to_order = array();
-		if ( ! empty( $vouchers ) ) {
-			$hpos_enabled = false;
-			if ( class_exists( 'Automattic\WooCommerce\Utilities\OrderUtil' ) && Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled() ) {
-				$hpos_enabled = true;
-			}
-
-			$meta_table = $hpos_enabled ? $wpdb->prefix . 'wc_orders_meta' : $wpdb->postmeta;
-			$id_col     = $hpos_enabled ? 'order_id' : 'post_id';
-
-			$placeholders = implode( ',', array_fill( 0, count( $vouchers ), '%s' ) );
-			$sql          = "SELECT {$id_col} as order_id, meta_value FROM {$meta_table} WHERE meta_key = 'courier_voucher' AND meta_value IN ({$placeholders})";
-			// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$results      = $wpdb->get_results( $wpdb->prepare( $sql, $vouchers ) );
-			// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-
-			if ( $results ) {
-				foreach ( $results as $row ) {
-					$voucher_to_order[ trim( $row->meta_value ) ] = (int) $row->order_id;
-				}
-			}
-		}
-
 		$matched = array();
 
 		foreach ( $raw_records as $rec ) {
 			$order_id = 0;
 
 			// Priority 1: Match by voucher
-			if ( ! empty( $rec['voucher'] ) && isset( $voucher_to_order[ $rec['voucher'] ] ) ) {
-				$order_id = $voucher_to_order[ $rec['voucher'] ];
+			if ( ! empty( $rec['voucher'] ) ) {
+				$found_order = GT_COD_Importer::find_order( $rec['voucher'], $rec['order_ref'] ?? '' );
+				if ( $found_order ) {
+					$order_id = $found_order->get_id();
+				}
 			}
 
 			// Priority 2: Match by order ID in order_ref (e.g. #55730)

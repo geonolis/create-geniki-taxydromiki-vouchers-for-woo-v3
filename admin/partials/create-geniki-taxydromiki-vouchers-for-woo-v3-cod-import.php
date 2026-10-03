@@ -3,6 +3,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals
+
 /**
  * Admin view for Geniki Taxydromiki COD Payments Import.
  *
@@ -175,7 +177,9 @@ elseif ( isset( $_POST['gt_cod_upload_file'] ) && check_admin_referer( 'gt_cod_u
 		wp_die( esc_html__( 'Δεν έχετε δικαίωμα εκτέλεσης αυτής της ενέργειας.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ) );
 	}
 
-	if ( empty( $_FILES['cod_csv_file']['tmp_name'] ) || ! is_uploaded_file( $_FILES['cod_csv_file']['tmp_name'] ) ) {
+	// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Validated via is_uploaded_file below.
+	$gt_raw_tmp_name = isset( $_FILES['cod_csv_file']['tmp_name'] ) ? $_FILES['cod_csv_file']['tmp_name'] : '';
+	if ( empty( $gt_raw_tmp_name ) || ! is_uploaded_file( $gt_raw_tmp_name ) ) {
 		$gt_notice = array(
 			'type'    => 'error',
 			'message' => __( 'Παρακαλούμε επιλέξτε ένα έγκυρο αρχείο CSV.', 'create-geniki-taxydromiki-vouchers-for-woo-v3' ),
