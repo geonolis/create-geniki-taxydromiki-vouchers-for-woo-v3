@@ -695,13 +695,14 @@ class GT_COD_Importer {
 
 		// 1. Primary lookup by courier_voucher meta key using standard wc_get_orders
 		if ( ! empty( $voucher ) && function_exists( 'wc_get_orders' ) ) {
-			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Necessary lookup by voucher number.
+			// phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 			$orders = wc_get_orders( array(
 				'meta_key'   => 'courier_voucher',
 				'meta_value' => $voucher,
 				'limit'      => 1,
 				'return'     => 'ids',
 			) );
+			// phpcs:enable WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 
 			if ( ! empty( $orders ) ) {
 				$found = wc_get_order( $orders[0] );
